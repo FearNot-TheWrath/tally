@@ -2,6 +2,7 @@ import { api } from '../lib/api.js';
 import { el, clear } from '../lib/dom.js';
 
 const root = document.getElementById('wall');
+let lastDataJson = null;
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const DAYS   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -29,13 +30,27 @@ async function render() {
   await applyServerTheme();
   const data = await api.get('/api/wall').catch(() => null);
   if (!data) {
-    clear(root);
-    root.appendChild(el('div', { class: 'wall-page' }, [
-      el('h2', {}, ['Connecting…']),
-    ]));
+    if (lastDataJson === null) {
+      clear(root);
+      root.appendChild(el('div', { class: 'wall-page' }, [
+        el('h2', {}, ['Connecting…']),
+      ]));
+    }
     return;
   }
+  const dataJson = JSON.stringify(data);
+  const headerOnly = dataJson === lastDataJson;
+  lastDataJson = dataJson;
+
   const now = new Date();
+
+  // If only the clock needs updating, update it in place.
+  if (headerOnly) {
+    const t = root.querySelector('.wall-header .t');
+    if (t) { t.textContent = fmtTime(now); return; }
+  }
+
+  // Otherwise full redraw.
   clear(root);
 
   const banner = el('div', { class: 'wall-banner' }, [
