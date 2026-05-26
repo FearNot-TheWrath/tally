@@ -2,9 +2,10 @@ import { api } from '../lib/api.js';
 import { el, clear } from '../lib/dom.js';
 
 const TABS = [
-  { key: 'today',  label: 'Today',  render: renderToday },
-  { key: 'people', label: 'People', render: renderPeople },
-  { key: 'chores', label: 'Chores', render: renderChores },
+  { key: 'today',     label: 'Today',     render: renderToday },
+  { key: 'approvals', label: 'Approvals', render: renderApprovals },
+  { key: 'people',    label: 'People',    render: renderPeople },
+  { key: 'chores',    label: 'Chores',    render: renderChores },
 ];
 
 export async function renderAdmin(root) {
@@ -265,4 +266,77 @@ function editChore(chore, host, kids) {
     ]),
   ]);
   document.body.appendChild(modal);
+}
+
+/* ───── Approvals tab ───── */
+async function renderApprovals(host) {
+  clear(host);
+  const { approvals } = await api.get('/api/admin/approvals');
+
+  host.appendChild(el('div', { class: 'row spaced', style: { marginBottom: 'var(--s3)' } }, [
+    el('h3', {}, ['Pending approvals']),
+    el('span', { class: 'muted' }, [`${approvals.length} waiting`]),
+  ]));
+
+  if (approvals.length === 0) {
+    host.appendChild(el('p', { class: 'muted' }, ['Nothing to review. Nice.']));
+    return;
+  }
+
+  const list = el('div', { class: 'stack' },
+    approvals.map(a => renderApprovalCard(a, host))
+  );
+  host.appendChild(list);
+}
+
+function renderApprovalCard(a, host) {
+  const card = el('div', { class: 'approval-card' }, [
+    el('div', { class: 'row spaced' }, [
+      el('div', { class: 'row' }, [
+        el('div', { class: 'chip', style: { background: a.kid_color || '#0F172A' } }, [a.kid_name[0]]),
+        el('div', {}, [
+          el('div', { style: { fontWeight: 600 } }, [a.chore_title]),
+          el('div', { class: 'muted', style: { fontSize: '0.78rem' } }, [
+            `${a.kid_name} · ${a.chore_points} pts · submitted ${a.submitted_at}`
+          ]),
+        ]),
+      ]),
+    ]),
+    a.photo_url ? el('a', { href: a.photo_url, target: '_blank' }, [
+      el('img', { class: 'approval-photo', src: a.photo_url, alt: a.chore_title }),
+    ]) : null,
+    a.note ? el('div', { class: 'approval-note' }, [a.note]) : null,
+    el('div', { class: 'row spaced approval-actions' }, [
+      el('button', {
+        class: 'btn btn-danger',
+        onClick: async () => {
+          const note = prompt('Reject reason (optional):') || '';
+          if (note === null) return;
+          await api.post(`/api/admin/approvals/${a.id}/reject`, { note });
+          await renderApprovals(host);
+        },
+      }, ['Reject']),
+      el('div', { class: 'row' }, [
+        el('button', {
+          class: 'btn btn-ghost',
+          onClick: async () => {
+            const ptsStr = prompt(`Award how many points? (default ${a.chore_points}):`, String(a.chore_points));
+            if (ptsStr === null) return;
+            const pts = parseInt(ptsStr, 10);
+            if (!Number.isFinite(pts) || pts < 0) { alert('Bad number'); return; }
+            await api.post(`/api/admin/approvals/${a.id}/approve`, { points: pts });
+            await renderApprovals(host);
+          },
+        }, ['Approve with…']),
+        el('button', {
+          class: 'btn btn-primary',
+          onClick: async () => {
+            await api.post(`/api/admin/approvals/${a.id}/approve`);
+            await renderApprovals(host);
+          },
+        }, [`Approve · +${a.chore_points}`]),
+      ]),
+    ]),
+  ].filter(Boolean));
+  return card;
 }

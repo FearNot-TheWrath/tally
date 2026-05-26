@@ -161,3 +161,28 @@
 .photo-btn.btn-loading { opacity: 0.6; pointer-events: none; }
 .txn.submitted { background: #FAF7FF; border-color: #C7BFEC; color: #5B21B6; }
 .txn.submitted .ico { background: #EDE9FE; color: #5B21B6; }
+
+.approval-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--s4);
+  margin-bottom: var(--s3);
+  display: flex; flex-direction: column; gap: var(--s3);
+  box-shadow: var(--shadow-sm);
+}
+.approval-photo {
+  max-width: 100%; max-height: 360px;
+  border-radius: var(--r-md);
+  display: block;
+  object-fit: contain;
+  background: var(--card-muted);
+}
+.approval-note {
+  background: var(--card-muted);
+  padding: 8px 12px;
+  border-radius: var(--r-sm);
+  font-size: 0.9rem;
+  font-style: italic;
+}
+.approval-actions { gap: var(--s2); }
