@@ -7,6 +7,7 @@ const TABS = [
   { key: 'approvals',  label: 'Approvals',  render: renderApprovals },
   { key: 'people',     label: 'People',     render: renderPeople },
   { key: 'chores',     label: 'Chores',     render: renderChores },
+  { key: 'settings',   label: 'Settings',   render: renderSettings },
 ];
 
 export async function renderAdmin(root) {
@@ -479,4 +480,36 @@ function renderDayReviewRow(it, host, date) {
       ]) : null,
     ].filter(Boolean)),
   ]);
+}
+
+/* ───── Settings tab ───── */
+async function renderSettings(host) {
+  clear(host);
+  const data = await api.get('/api/admin/settings');
+  const s = data.settings;
+
+  host.appendChild(el('h3', { style: { marginBottom: 'var(--s4)' } }, ['Settings']));
+
+  const stealField = el('div', { class: 'form-field' }, [
+    el('label', {}, ['Steal unlock time (24-hour local)']),
+    el('input', {
+      type: 'time',
+      value: s.steal_unlock_time || '16:00',
+      onChange: async (e) => {
+        const value = e.target.value;
+        try {
+          await api.patch('/api/admin/settings/steal_unlock_time', { value });
+          e.target.style.borderColor = 'var(--green)';
+          setTimeout(() => { e.target.style.borderColor = ''; }, 800);
+        } catch (err) {
+          alert('Save failed: ' + err.message);
+        }
+      },
+    }),
+    el('div', { class: 'muted', style: { fontSize: '0.78rem', marginTop: '4px' } }, [
+      "Time of day after which kids can claim siblings' pending non-school chores.",
+    ]),
+  ]);
+
+  host.appendChild(stealField);
 }
