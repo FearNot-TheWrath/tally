@@ -156,3 +156,8 @@
 .wall-col .task.over { background: #FEF2F2; color: var(--red); }
 .wall-col .task .p { font-family: var(--font-num); font-weight: 600; color: var(--green); }
 .wall-col .task.done .p { color: var(--muted); }
+
+.photo-btn { cursor: pointer; }
+.photo-btn.btn-loading { opacity: 0.6; pointer-events: none; }
+.txn.submitted { background: #FAF7FF; border-color: #C7BFEC; color: #5B21B6; }
+.txn.submitted .ico { background: #EDE9FE; color: #5B21B6; }

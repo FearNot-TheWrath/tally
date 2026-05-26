@@ -52,15 +52,17 @@ export async function renderHome(root) {
 function renderTask(a, root, overdue = false) {
   const classes = ['txn'];
   if (a.status === 'done') classes.push('done');
+  if (a.status === 'submitted') classes.push('submitted');
   if (overdue) classes.push('over');
 
   const ico = a.anti_cheat === 'photo' ? 'cam' : a.anti_cheat === 'approval' ? 'appr' : (a.status === 'done' ? 'done' : '');
   const icoText = a.anti_cheat === 'photo' ? 'P' : a.anti_cheat === 'approval' ? 'A' : (a.status === 'done' ? '✓' : a.title[0]);
 
-  // Action affordance on the right depends on chore type + status.
   let action;
   if (a.status === 'done') {
     action = el('span', { class: 'pts' }, [`+${a.points}`]);
+  } else if (a.status === 'submitted') {
+    action = el('span', { class: 'pill pill-info' }, ['Waiting for parent']);
   } else if (a.anti_cheat === 'honor') {
     action = el('button', {
       class: 'btn btn-primary btn-done',
@@ -69,7 +71,7 @@ function renderTask(a, root, overdue = false) {
         e.target.disabled = true;
         e.target.textContent = '…';
         try {
-          await api.post(`/api/assignments/${a.id}/done`);
+          await api.post(`/api/assignments/${a.id}/submit`);
           renderHome(root);
         } catch (err) {
           alert('Could not mark done: ' + err.message);
@@ -78,12 +80,54 @@ function renderTask(a, root, overdue = false) {
         }
       },
     }, [`Done · +${a.points}`]);
-  } else if (a.anti_cheat === 'photo') {
-    action = el('span', { class: 'pill pill-warn' }, ['Needs photo']);
   } else if (a.anti_cheat === 'approval') {
-    action = el('span', { class: 'pill pill-info' }, ['Needs approval']);
-  } else {
-    action = el('span', { class: 'pts' }, [`+${a.points}`]);
+    action = el('button', {
+      class: 'btn btn-primary btn-done',
+      onClick: async (e) => {
+        e.stopPropagation();
+        e.target.disabled = true;
+        e.target.textContent = '…';
+        try {
+          await api.post(`/api/assignments/${a.id}/submit`);
+          renderHome(root);
+        } catch (err) {
+          alert('Could not submit: ' + err.message);
+          e.target.disabled = false;
+          e.target.textContent = `Submit · +${a.points}`;
+        }
+      },
+    }, [`Submit · +${a.points}`]);
+  } else if (a.anti_cheat === 'photo') {
+    action = el('label', { class: 'btn btn-primary btn-done photo-btn' }, [
+      `Photo · +${a.points}`,
+      el('input', {
+        type: 'file', accept: 'image/*', capture: 'environment',
+        style: { display: 'none' },
+        onChange: async (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          const btn = e.target.parentElement;
+          btn.classList.add('btn-loading');
+          btn.firstChild.nodeValue = 'Uploading…';
+          const fd = new FormData();
+          fd.append('photo', file);
+          try {
+            const res = await fetch(`/api/assignments/${a.id}/submit`, {
+              method: 'POST', credentials: 'same-origin', body: fd,
+            });
+            if (!res.ok) {
+              const data = await res.json().catch(() => ({}));
+              throw new Error(data.error || res.statusText);
+            }
+            renderHome(root);
+          } catch (err) {
+            alert('Upload failed: ' + err.message);
+            btn.classList.remove('btn-loading');
+            btn.firstChild.nodeValue = `Photo · +${a.points}`;
+          }
+        },
+      }),
+    ]);
   }
 
   return el('div', { class: classes.join(' ') }, [
