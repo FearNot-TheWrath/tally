@@ -57,26 +57,42 @@ function renderTask(a, root, overdue = false) {
   const ico = a.anti_cheat === 'photo' ? 'cam' : a.anti_cheat === 'approval' ? 'appr' : (a.status === 'done' ? 'done' : '');
   const icoText = a.anti_cheat === 'photo' ? 'P' : a.anti_cheat === 'approval' ? 'A' : (a.status === 'done' ? '✓' : a.title[0]);
 
-  const row = el('div', { class: classes.join(' ') }, [
+  // Action affordance on the right depends on chore type + status.
+  let action;
+  if (a.status === 'done') {
+    action = el('span', { class: 'pts' }, [`+${a.points}`]);
+  } else if (a.anti_cheat === 'honor') {
+    action = el('button', {
+      class: 'btn btn-primary btn-done',
+      onClick: async (e) => {
+        e.stopPropagation();
+        e.target.disabled = true;
+        e.target.textContent = '…';
+        try {
+          await api.post(`/api/assignments/${a.id}/done`);
+          renderHome(root);
+        } catch (err) {
+          alert('Could not mark done: ' + err.message);
+          e.target.disabled = false;
+          e.target.textContent = `Done · +${a.points}`;
+        }
+      },
+    }, [`Done · +${a.points}`]);
+  } else if (a.anti_cheat === 'photo') {
+    action = el('span', { class: 'pill pill-warn' }, ['Needs photo']);
+  } else if (a.anti_cheat === 'approval') {
+    action = el('span', { class: 'pill pill-info' }, ['Needs approval']);
+  } else {
+    action = el('span', { class: 'pts' }, [`+${a.points}`]);
+  }
+
+  return el('div', { class: classes.join(' ') }, [
     el('div', { class: 'left' }, [
       el('div', { class: `ico ${ico}` }, [icoText]),
       el('span', {}, [a.title]),
     ]),
-    el('span', { class: 'pts' }, [`+${a.points}`]),
+    action,
   ]);
-
-  if (a.status !== 'done' && a.anti_cheat === 'honor') {
-    row.style.cursor = 'pointer';
-    row.addEventListener('click', async () => {
-      try {
-        await api.post(`/api/assignments/${a.id}/done`);
-        renderHome(root);
-      } catch (e) {
-        alert('Could not mark done: ' + e.message);
-      }
-    });
-  }
-  return row;
 }
 
 async function logout() {

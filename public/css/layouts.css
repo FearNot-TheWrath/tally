@@ -17,6 +17,30 @@
   flex-shrink: 0;
 }
 
+/* Done button on chore rows (touch-friendly) */
+.btn-done {
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  font-family: var(--font-num);
+  font-feature-settings: 'tnum';
+  min-width: 92px;
+  justify-content: center;
+}
+.btn-done:disabled { opacity: 0.5; cursor: default; }
+
+/* Status pills (for photo/approval pending phases) */
+.pill {
+  display: inline-flex; align-items: center;
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+.pill-warn { background: #FEF3C7; color: #92400E; }
+.pill-info { background: #EDE9FE; color: #5B21B6; }
+
 .picker-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
