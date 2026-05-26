@@ -7,6 +7,16 @@
 .row   { display: flex; gap: var(--s3); align-items: center; }
 .spaced { justify-content: space-between; }
 
+.chip {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  color: white;
+  font-size: 0.68rem;
+  font-weight: 700;
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
 .picker-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));

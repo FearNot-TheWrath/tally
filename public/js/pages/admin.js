@@ -160,15 +160,28 @@ async function renderChores(host) {
   ]);
   const kids = people.filter(p => p.role === 'kid');
 
-  const rows = chores.map(c => el('div', { class: 'list-row', onClick: () => editChore(c, host, kids) }, [
-    el('div', {}, [
-      el('div', { style: { fontWeight: 600 } }, [c.title]),
-      el('div', { class: 'muted', style: { fontSize: '0.78rem' } }, [
-        `${c.recurs} · ${c.anti_cheat} · ${c.points} pts`
+  const rows = chores.map(c => {
+    const assignees = (c.default_assignees || '').split(',').filter(Boolean)
+      .map(id => kids.find(k => k.id === parseInt(id, 10)))
+      .filter(Boolean);
+    const assigneeChips = assignees.length === 0
+      ? [el('span', { class: 'muted', style: { fontSize: '0.72rem', fontStyle: 'italic' } }, ['unassigned'])]
+      : assignees.map(k => el('span', {
+          class: 'chip',
+          title: k.name,
+          style: { background: k.avatar_color },
+        }, [k.name[0]]));
+    return el('div', { class: 'list-row', onClick: () => editChore(c, host, kids) }, [
+      el('div', {}, [
+        el('div', { style: { fontWeight: 600 } }, [c.title]),
+        el('div', { class: 'muted', style: { fontSize: '0.78rem' } }, [
+          `${c.recurs} · ${c.anti_cheat} · ${c.points} pts`
+        ]),
+        el('div', { class: 'row', style: { gap: '4px', marginTop: '6px', flexWrap: 'wrap' } }, assigneeChips),
       ]),
-    ]),
-    el('button', { class: 'btn btn-ghost' }, ['Edit']),
-  ]));
+      el('button', { class: 'btn btn-ghost' }, ['Edit']),
+    ]);
+  });
   host.appendChild(el('div', { class: 'row spaced', style: { marginBottom: 'var(--s3)' } }, [
     el('h3', {}, ['Chores']),
     el('button', { class: 'btn btn-primary', onClick: () => editChore(null, host, kids) }, ['+ Add']),
