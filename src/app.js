@@ -8,6 +8,7 @@ import { wallRoutes } from './routes/wall.js';
 import { adminPeopleRoutes } from './routes/admin/people.js';
 import { adminChoresRoutes } from './routes/admin/chores.js';
 import { adminTodayRoutes } from './routes/admin/today.js';
+import { adminApprovalsRoutes, uploadsRoute } from './routes/admin/approvals.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -29,9 +30,11 @@ export function buildApp({ db, sessionSecret = 'dev-secret', uploadsDir = './upl
   app.use('/api', meRoute());
   app.use('/api', homeRoutes({ uploadsDir }));
   app.use('/api', wallRoutes());
+  app.use('/api', uploadsRoute());
   app.use('/api/admin', adminPeopleRoutes());
   app.use('/api/admin', adminChoresRoutes());
   app.use('/api/admin', adminTodayRoutes());
+  app.use('/api/admin', adminApprovalsRoutes());
 
   app.get('/wall', (_req, res) => res.sendFile(join(__dirname, '..', 'public', 'wall.html')));
   app.use(express.static(join(__dirname, '..', 'public')));
