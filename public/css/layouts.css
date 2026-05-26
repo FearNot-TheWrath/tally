@@ -195,3 +195,32 @@
   background: transparent;
 }
 .btn-undo:hover { color: var(--ink); background: var(--card-muted); }
+
+.date-picker {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--card);
+  font-family: var(--font-num);
+  font-size: 0.85rem;
+}
+.btn-sm { padding: 6px 12px; font-size: 0.78rem; }
+
+.pill-success { background: #D1FAE5; color: #047857; }
+.pill-danger { background: #FEE2E2; color: var(--red); }
+
+.review-row {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 12px 14px;
+  box-shadow: var(--shadow-sm);
+}
+.review-row-main { display: flex; flex-direction: column; gap: 8px; }
+.review-photo {
+  max-width: 100%; max-height: 280px;
+  border-radius: var(--r-sm);
+  display: block;
+  object-fit: contain;
+  background: var(--card-muted);
+}

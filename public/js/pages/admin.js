@@ -2,10 +2,11 @@ import { api } from '../lib/api.js';
 import { el, clear } from '../lib/dom.js';
 
 const TABS = [
-  { key: 'today',     label: 'Today',     render: renderToday },
-  { key: 'approvals', label: 'Approvals', render: renderApprovals },
-  { key: 'people',    label: 'People',    render: renderPeople },
-  { key: 'chores',    label: 'Chores',    render: renderChores },
+  { key: 'today',      label: 'Today',      render: renderToday },
+  { key: 'day-review', label: 'Day review', render: renderDayReview },
+  { key: 'approvals',  label: 'Approvals',  render: renderApprovals },
+  { key: 'people',     label: 'People',     render: renderPeople },
+  { key: 'chores',     label: 'Chores',     render: renderChores },
 ];
 
 export async function renderAdmin(root) {
@@ -339,4 +340,120 @@ function renderApprovalCard(a, host) {
     ]),
   ].filter(Boolean));
   return card;
+}
+
+/* ───── Day Review tab ───── */
+async function renderDayReview(host, dateOverride = null) {
+  clear(host);
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const date = dateOverride || todayIso;
+
+  host.appendChild(el('div', { class: 'row spaced', style: { marginBottom: 'var(--s4)' } }, [
+    el('h3', {}, ['Day review']),
+    el('div', { class: 'row' }, [
+      el('button', {
+        class: 'btn btn-ghost btn-sm',
+        onClick: () => shiftDay(date, -1, host),
+      }, ['‹ Prev']),
+      el('input', {
+        type: 'date', value: date,
+        class: 'date-picker',
+        onChange: (e) => renderDayReview(host, e.target.value),
+      }),
+      el('button', {
+        class: 'btn btn-ghost btn-sm',
+        onClick: () => shiftDay(date, 1, host),
+      }, ['Next ›']),
+    ]),
+  ]));
+
+  let data;
+  try {
+    data = await api.get(`/api/admin/day-review?date=${date}`);
+  } catch (e) {
+    host.appendChild(el('p', { class: 'red' }, ['Failed to load: ' + e.message]));
+    return;
+  }
+
+  if (data.items.length === 0) {
+    host.appendChild(el('p', { class: 'muted' }, ['No photo or approval chores assigned for this day.']));
+    return;
+  }
+
+  // Group by kid for readability
+  const byKid = {};
+  for (const it of data.items) {
+    if (!byKid[it.kid_id]) byKid[it.kid_id] = { name: it.kid_name, color: it.kid_color, items: [] };
+    byKid[it.kid_id].items.push(it);
+  }
+
+  for (const kid of Object.values(byKid)) {
+    host.appendChild(el('div', { class: 'row', style: { marginTop: 'var(--s4)', marginBottom: 'var(--s2)', gap: '8px' } }, [
+      el('div', { class: 'chip', style: { background: kid.color } }, [kid.name[0]]),
+      el('h4', {}, [kid.name]),
+      el('span', { class: 'muted', style: { fontSize: '0.8rem' } }, [
+        `${kid.items.filter(i => i.status === 'done').length}/${kid.items.length} done`,
+      ]),
+    ]));
+
+    host.appendChild(el('div', { class: 'stack' },
+      kid.items.map(it => renderDayReviewRow(it, host, date))
+    ));
+  }
+}
+
+function shiftDay(currentDateIso, deltaDays, host) {
+  const d = new Date(currentDateIso + 'T00:00:00');
+  d.setDate(d.getDate() + deltaDays);
+  const next = d.toISOString().slice(0, 10);
+  renderDayReview(host, next);
+}
+
+function renderDayReviewRow(it, host, date) {
+  const statusBadge = ({
+    pending: el('span', { class: 'pill pill-warn' }, ['Not submitted']),
+    submitted: el('span', { class: 'pill pill-info' }, ['Waiting']),
+    done: el('span', { class: 'pill pill-success' }, ['Done']),
+    rejected: el('span', { class: 'pill pill-danger' }, ['Rejected']),
+    expired: el('span', { class: 'pill' }, ['Expired']),
+  })[it.status] || el('span', { class: 'pill' }, [it.status]);
+
+  const meta = [];
+  if (it.status === 'done' && it.approver_name) meta.push(`Approved by ${it.approver_name}`);
+  if (it.status === 'rejected' && it.note) meta.push(`Rejected: ${it.note}`);
+  if (it.status === 'submitted' && it.submitted_at) meta.push(`Submitted ${it.submitted_at}`);
+
+  return el('div', { class: 'review-row' }, [
+    el('div', { class: 'review-row-main' }, [
+      el('div', { class: 'row spaced' }, [
+        el('div', {}, [
+          el('div', { style: { fontWeight: 600 } }, [it.chore_title]),
+          el('div', { class: 'muted', style: { fontSize: '0.78rem' } }, [
+            `${it.anti_cheat} · ${it.chore_points} pts${meta.length ? ' · ' + meta.join(' · ') : ''}`,
+          ]),
+        ]),
+        statusBadge,
+      ]),
+      it.photo_url ? el('a', { href: it.photo_url, target: '_blank' }, [
+        el('img', { class: 'review-photo', src: it.photo_url, alt: it.chore_title }),
+      ]) : null,
+      it.status === 'submitted' ? el('div', { class: 'row spaced', style: { marginTop: '8px' } }, [
+        el('button', {
+          class: 'btn btn-danger btn-sm',
+          onClick: async () => {
+            const note = prompt('Reject reason (optional):') || '';
+            await api.post(`/api/admin/approvals/${it.id}/reject`, { note });
+            renderDayReview(host, date);
+          },
+        }, ['Reject']),
+        el('button', {
+          class: 'btn btn-primary btn-sm',
+          onClick: async () => {
+            await api.post(`/api/admin/approvals/${it.id}/approve`);
+            renderDayReview(host, date);
+          },
+        }, [`Approve · +${it.chore_points}`]),
+      ]) : null,
+    ].filter(Boolean)),
+  ]);
 }
