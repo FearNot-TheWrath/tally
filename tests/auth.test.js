@@ -12,3 +12,12 @@ test('migrations create people, sessions, settings tables', () => {
   assert.ok(tables.includes('settings'));
   assert.ok(tables.includes('_migrations'));
 });
+
+test('migrations create chores and assignments tables', () => {
+  const db = freshDb();
+  const tables = db.prepare(
+    "SELECT name FROM sqlite_master WHERE type='table'"
+  ).all().map(r => r.name);
+  assert.ok(tables.includes('chores'));
+  assert.ok(tables.includes('assignments'));
+});
