@@ -183,7 +183,7 @@ async function renderChores(host) {
       el('div', {}, [
         el('div', { style: { fontWeight: 600 } }, [c.title]),
         el('div', { class: 'muted', style: { fontSize: '0.78rem' } }, [
-          `${c.recurs} · ${c.anti_cheat} · ${c.points} pts`
+          `${c.recurs} · ${c.anti_cheat} · weight ${'●'.repeat(c.weight || 3)}${'○'.repeat(5 - (c.weight || 3))}${c.is_school_work ? ' · (school)' : ''}`
         ]),
         el('div', { class: 'row', style: { gap: '4px', marginTop: '6px', flexWrap: 'wrap' } }, assigneeChips),
       ]),
@@ -200,7 +200,8 @@ async function renderChores(host) {
 function editChore(chore, host, kids) {
   const isNew = !chore;
   const data = chore ? { ...chore } : {
-    title: '', points: 5, kind: 'recurring', recurs: 'daily', anti_cheat: 'honor',
+    title: '', points: 5, weight: 3, is_school_work: 0,
+    kind: 'recurring', recurs: 'daily', anti_cheat: 'honor',
     default_assignees: '', recurs_days: '',
   };
   const assigneeSet = new Set((data.default_assignees || '').split(',').filter(Boolean).map(Number));
@@ -213,6 +214,22 @@ function editChore(chore, host, kids) {
     el('div', { class: 'form-field' }, [
       el('label', {}, ['Points']),
       el('input', { type: 'number', value: data.points, onInput: e => data.points = Number(e.target.value) }),
+    ]),
+    el('div', { class: 'form-field' }, [
+      el('label', {}, ['Weight (effort)']),
+      el('select', { onChange: e => data.weight = Number(e.target.value) },
+        [1,2,3,4,5].map(w => el('option', { value: w, selected: data.weight === w }, [String(w) + (w === 1 ? ' — very light' : w === 5 ? ' — very heavy' : '')]))
+      ),
+    ]),
+    el('div', { class: 'form-field' }, [
+      el('label', { class: 'row', style: { gap: '6px', cursor: 'pointer' } }, [
+        el('input', {
+          type: 'checkbox',
+          checked: data.is_school_work === 1,
+          onChange: e => { data.is_school_work = e.target.checked ? 1 : 0; },
+        }),
+        el('span', {}, ['School work — cannot be stolen by siblings']),
+      ]),
     ]),
     el('div', { class: 'form-field' }, [
       el('label', {}, ['Recurs']),
