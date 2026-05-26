@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { requireRole } from '../../auth.js';
-import { today } from '../../lib/dates.js';
+import { today, weekStart } from '../../lib/dates.js';
+import { calcWeekPoints, calcProjectedPay } from '../../lib/points.js';
 
 export function adminTodayRoutes() {
   const r = Router();
@@ -9,8 +10,10 @@ export function adminTodayRoutes() {
   r.get('/today', (req, res) => {
     const db = req.app.get('db');
     const t = today();
+    const ws = weekStart(t);
     const kids = db.prepare(`
-      SELECT id, name, avatar_color FROM people WHERE role = 'kid' ORDER BY name
+      SELECT id, name, avatar_color, weekly_target_pts, base_pay_cents, bonus_rate_cents
+      FROM people WHERE role = 'kid' ORDER BY name
     `).all();
 
     let total = 0, done = 0;
@@ -25,6 +28,11 @@ export function adminTodayRoutes() {
       k.overdue = rows.filter(r => r.due_date !== t).length;
       total += k.today_total;
       done += k.today_done;
+
+      const pts = calcWeekPoints(db, k.id, ws);
+      k.points = pts.points;
+      k.percent = pts.percent;
+      k.projected_pay_cents = calcProjectedPay(k, pts.points);
     }
     res.json({
       house_pct: total === 0 ? 100 : Math.round((done / total) * 100),

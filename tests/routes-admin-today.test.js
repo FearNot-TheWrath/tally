@@ -25,3 +25,19 @@ test('GET /api/admin/today returns counts and a per-kid summary', async () => {
   assert.equal(res.body.kids.length, 1);
   assert.equal(res.body.kids[0].today_total, 1);
 });
+
+test('GET /api/admin/today returns points, percent, projected_pay_cents per kid', async () => {
+  const db = freshDb();
+  const kid = db.prepare("INSERT INTO people (name, role, weekly_target_pts, base_pay_cents, bonus_rate_cents) VALUES ('K','kid',100,1000,10) RETURNING id").get().id;
+  const c = db.prepare("INSERT INTO chores (title, weight, recurs, default_assignees) VALUES ('A', 2, 'daily', ?) RETURNING id").get(String(kid)).id;
+  db.prepare("INSERT INTO assignments (chore_id, person_id, due_date, status) VALUES (?, ?, date('now'), 'done')").run(c, kid);
+
+  const app = freshApp(db);
+  const agent = await asParent(app, db);
+  const res = await agent.get('/api/admin/today');
+  assert.equal(res.status, 200);
+  const k = res.body.kids[0];
+  assert.equal(k.points, 100, 'all weight done = 100 pts');
+  assert.equal(k.percent, 1);
+  assert.equal(k.projected_pay_cents, 1000);
+});
