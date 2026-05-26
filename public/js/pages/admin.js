@@ -10,7 +10,6 @@ const TABS = [
 ];
 
 export async function renderAdmin(root) {
-  clear(root);
   const me = await api.get('/api/me').catch(() => null);
   if (!me || me.role !== 'parent') { window.tallyNavigate('/'); return; }
 
@@ -26,7 +25,7 @@ export async function renderAdmin(root) {
 
   const content = el('div', {});
 
-  root.appendChild(el('div', { class: 'page wide stack' }, [
+  const shell = el('div', { class: 'page wide stack' }, [
     el('header', { class: 'app-header' }, [
       el('h1', {}, ['Tally · Admin']),
       el('div', { class: 'row' }, [
@@ -35,7 +34,14 @@ export async function renderAdmin(root) {
     ]),
     tabsBar,
     content,
-  ]));
+  ]);
+
+  // Clear immediately before append to defeat the concurrent-render race:
+  // a tap that fires twice (or a tab click during /me await) used to leave
+  // both DOM trees attached. Clearing here means whichever render finishes
+  // last wins; earlier appends are wiped.
+  clear(root);
+  root.appendChild(shell);
 
   await TABS.find(t => t.key === active).render(content);
 }
