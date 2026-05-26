@@ -1,0 +1,25 @@
+import express from 'express';
+import cookieSession from 'cookie-session';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+export function buildApp({ db, sessionSecret = 'dev-secret' }) {
+  const app = express();
+  app.set('db', db);
+  app.use(express.json({ limit: '8mb' }));
+  app.use(cookieSession({
+    name: 'tally_session',
+    keys: [sessionSecret],
+    maxAge: 365 * 24 * 60 * 60 * 1000,
+    sameSite: 'lax',
+    httpOnly: true,
+  }));
+
+  app.get('/api/health', (_req, res) => res.json({ ok: true }));
+
+  app.use(express.static(join(__dirname, '..', 'public')));
+
+  return app;
+}
