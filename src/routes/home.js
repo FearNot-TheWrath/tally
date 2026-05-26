@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { requireRole, requireAnyAuth } from '../auth.js';
-import { today } from '../lib/dates.js';
+import { today, weekStart } from '../lib/dates.js';
+import { calcWeekPoints, calcProjectedPay } from '../lib/points.js';
 import { savePhoto } from '../lib/photo.js';
 
 export function homeRoutes({ uploadsDir = './uploads' } = {}) {
@@ -20,15 +21,31 @@ export function homeRoutes({ uploadsDir = './uploads' } = {}) {
       FROM people WHERE id = ?
     `).get(personId);
 
+    const ws = weekStart(today());
+    const pts = calcWeekPoints(db, personId, ws);
+    person.points_this_week = pts.points;
+    person.percent = pts.percent;
+    person.projected_pay_cents = calcProjectedPay(person, pts.points);
+
     const assignments = db.prepare(`
       SELECT a.id, a.due_date, a.status, a.note, a.photo_path,
-             c.title, c.points, c.anti_cheat
+             a.stolen_from,
+             c.title, c.weight, c.anti_cheat,
+             sf.name AS stolen_from_name
       FROM assignments a
       JOIN chores c ON c.id = a.chore_id
+      LEFT JOIN people sf ON sf.id = a.stolen_from
       WHERE a.person_id = ?
         AND (a.due_date = ? OR (a.due_date < ? AND a.status NOT IN ('done','expired','rejected')))
       ORDER BY a.due_date, c.title
     `).all(personId, today(), today());
+
+    const target = person.weekly_target_pts || 0;
+    for (const a of assignments) {
+      a.display_points = pts.totalWeight > 0
+        ? Math.round(a.weight / pts.totalWeight * target)
+        : 0;
+    }
 
     const todayList = assignments.filter(a => a.due_date === today());
     const overdueList = assignments.filter(a => a.due_date !== today());

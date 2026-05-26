@@ -57,3 +57,23 @@ test('GET /api/home rejects unauthenticated requests', async () => {
   const res = await request(app).get('/api/home');
   assert.equal(res.status, 401);
 });
+
+test('GET /api/home populates points_this_week, percent, projected_pay_cents', async () => {
+  const db = freshDb();
+  const kid = db.prepare("INSERT INTO people (name, role, weekly_target_pts, base_pay_cents, bonus_rate_cents) VALUES ('K','kid',100,1000,10) RETURNING id").get().id;
+  const c1 = db.prepare("INSERT INTO chores (title, weight, recurs, default_assignees, anti_cheat) VALUES ('A', 3, 'daily', ?, 'honor') RETURNING id").get(String(kid)).id;
+  const c2 = db.prepare("INSERT INTO chores (title, weight, recurs, default_assignees, anti_cheat) VALUES ('B', 2, 'daily', ?, 'honor') RETURNING id").get(String(kid)).id;
+  db.prepare("INSERT INTO assignments (chore_id, person_id, due_date, status) VALUES (?, ?, date('now'), 'done')").run(c1, kid);
+  db.prepare("INSERT INTO assignments (chore_id, person_id, due_date, status) VALUES (?, ?, date('now'), 'pending')").run(c2, kid);
+
+  const app = freshApp(db);
+  const agent = await loginAs(app, kid);
+  const res = await agent.get('/api/home');
+  assert.equal(res.status, 200);
+  assert.equal(res.body.person.points_this_week, 60);
+  assert.equal(res.body.person.projected_pay_cents, 600);
+  assert.ok(Array.isArray(res.body.today));
+  for (const r of res.body.today) {
+    assert.ok(typeof r.display_points === 'number', `display_points missing on ${r.title}`);
+  }
+});
