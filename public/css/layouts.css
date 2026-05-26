@@ -157,6 +157,27 @@
 .wall-col .task .p { font-family: var(--font-num); font-weight: 600; color: var(--green); }
 .wall-col .task.done .p { color: var(--muted); }
 
+/* Auto-scrolling task list for kid columns on the wall. Activated by JS
+   when the natural task-list height exceeds the column's visible area. */
+.wall-col .tasks-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+}
+.wall-col .tasks-track {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.wall-col .tasks-track.scrolling {
+  animation: tasks-marquee var(--scroll-duration, 30s) linear infinite;
+}
+@keyframes tasks-marquee {
+  0%   { transform: translateY(0); }
+  100% { transform: translateY(-50%); }
+}
+
 .photo-btn { cursor: pointer; }
 .photo-btn.btn-loading { opacity: 0.6; pointer-events: none; }
 .txn.submitted { background: #FAF7FF; border-color: #C7BFEC; color: #5B21B6; }

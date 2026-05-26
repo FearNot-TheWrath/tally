@@ -81,19 +81,21 @@ async function render() {
           el('span', {}, [`${k.points || 0} pts (${Math.round((k.percent || 0) * 100)}%)`]),
           el('span', {}, [`${k.streak_days || 0}d streak`]),
         ]),
-        el('div', { class: 'stack', style: { gap: '6px' } },
-          tasks.length === 0
-            ? [el('p', { class: 'muted', style: { fontSize: '0.85rem' } }, ['All clear.'])]
-            : tasks.map(t => el('div', {
-                class: 'task' + (t.status === 'done' ? ' done' : '') + (t.over ? ' over' : ''),
-              }, [
-                el('div', {}, [
-                  el('span', {}, [t.title]),
-                  t.stolen_from_name ? el('span', { style: { fontSize: '0.62rem', color: 'var(--muted)', marginLeft: '6px' } }, [`(from ${t.stolen_from_name})`]) : null,
-                ].filter(Boolean)),
-                el('span', { class: 'p' }, [`+${t.display_points || 0}`]),
-              ]))
-        ),
+        el('div', { class: 'tasks-scroll' }, [
+          el('div', { class: 'tasks-track' },
+            tasks.length === 0
+              ? [el('p', { class: 'muted', style: { fontSize: '0.85rem' } }, ['All clear.'])]
+              : tasks.map(t => el('div', {
+                  class: 'task' + (t.status === 'done' ? ' done' : '') + (t.over ? ' over' : ''),
+                }, [
+                  el('div', {}, [
+                    el('span', {}, [t.title]),
+                    t.stolen_from_name ? el('span', { style: { fontSize: '0.62rem', color: 'var(--muted)', marginLeft: '6px' } }, [`(from ${t.stolen_from_name})`]) : null,
+                  ].filter(Boolean)),
+                  el('span', { class: 'p' }, [`+${t.display_points || 0}`]),
+                ]))
+          ),
+        ]),
       ]);
     })
   );
@@ -106,6 +108,28 @@ async function render() {
     banner,
     cols,
   ]));
+
+  // After layout settles, turn on auto-scroll for any column whose task
+  // list overflows its visible area. Duplicate the children so the marquee
+  // loops seamlessly (-50% translate == one original-list height).
+  requestAnimationFrame(() => {
+    for (const scrollWin of root.querySelectorAll('.tasks-scroll')) {
+      const track = scrollWin.querySelector('.tasks-track');
+      if (!track) continue;
+      // Reset before measuring in case a prior render left this in scrolling state.
+      track.classList.remove('scrolling');
+      if (track.scrollHeight > scrollWin.clientHeight + 4) {
+        const originalCount = track.children.length;
+        for (const child of [...track.children]) {
+          track.appendChild(child.cloneNode(true));
+        }
+        // ~3s per item, minimum 20s total. Slow enough to read.
+        const duration = Math.max(20, originalCount * 3);
+        track.style.setProperty('--scroll-duration', duration + 's');
+        track.classList.add('scrolling');
+      }
+    }
+  });
 }
 
 render();
