@@ -32,6 +32,8 @@ export function buildApp({ db, sessionSecret = 'dev-secret' }) {
   app.use('/api/admin', adminChoresRoutes());
   app.use('/api/admin', adminTodayRoutes());
 
+  app.get('/wall', (_req, res) => res.sendFile(join(__dirname, '..', 'public', 'wall.html')));
+
   app.use(express.static(join(__dirname, '..', 'public')));
 
   return app;
