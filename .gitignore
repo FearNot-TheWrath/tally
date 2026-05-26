@@ -1,0 +1,7 @@
+node_modules/
+tally.db
+tally.db-journal
+uploads/
+.env
+.DS_Store
+.superpowers/

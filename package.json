@@ -1,0 +1,21 @@
+{
+  "name": "tally",
+  "version": "0.1.0",
+  "description": "Household chores + allowance app for the Lopez family",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node --test tests/"
+  },
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "better-sqlite3": "^11.5.0",
+    "cookie-session": "^2.1.0",
+    "express": "^5.0.0"
+  },
+  "devDependencies": {
+    "supertest": "^7.0.0"
+  }
+}
