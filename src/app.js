@@ -3,6 +3,7 @@ import cookieSession from 'cookie-session';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { authRoutes, meRoute } from './routes/auth.js';
+import { homeRoutes } from './routes/home.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -21,6 +22,7 @@ export function buildApp({ db, sessionSecret = 'dev-secret' }) {
   app.get('/api/health', (_req, res) => res.json({ ok: true }));
   app.use('/api/auth', authRoutes());
   app.use('/api', meRoute());
+  app.use('/api', homeRoutes());
 
   app.use(express.static(join(__dirname, '..', 'public')));
 
