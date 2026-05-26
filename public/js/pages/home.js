@@ -6,20 +6,21 @@ export async function renderHome(root) {
   const data = await api.get('/api/home');
   const p = data.person;
 
-  const heroProgress = p.weekly_target_pts > 0
-    ? Math.min(100, Math.round(((p.points_this_week || 0) / p.weekly_target_pts) * 100))
-    : 0;
+  const pct = Math.min(100, Math.round((p.percent || 0) * 100));
+  const points = p.points_this_week || 0;
+  const target = p.weekly_target_pts || 0;
+  const projDollars = ((p.projected_pay_cents || 0) / 100).toFixed(2);
 
   const hero = el('div', { class: 'hero' }, [
     el('div', { class: 'label' }, ['This week']),
     el('div', { class: 'big-num' }, [
-      el('span', {}, [String(p.points_this_week || 0)]),
-      el('span', { class: 'denom' }, [` / ${p.weekly_target_pts} pts`]),
+      el('span', {}, [String(points)]),
+      el('span', { class: 'denom' }, [` / ${target} pts · ${pct}%`]),
     ]),
-    el('div', { class: 'bar' }, [el('div', { class: 'bar-fill', style: { width: heroProgress + '%' } })]),
+    el('div', { class: 'bar' }, [el('div', { class: 'bar-fill', style: { width: pct + '%' } })]),
     el('div', { class: 'row spaced', style: { marginTop: '10px', fontSize: '0.78rem', color: 'var(--hero-muted)' } }, [
+      el('span', {}, [`~$${projDollars} projected`]),
       el('span', {}, [`${p.streak_days || 0} day streak`]),
-      el('span', {}, [`$${((p.bank_cents || 0) / 100).toFixed(2)} bank`]),
     ]),
   ]);
 
@@ -35,6 +36,37 @@ export async function renderHome(root) {
     ...data.overdue.map(a => renderTask(a, root, true)),
   ]);
 
+  const stealSection = (data.stealable && data.stealable.length > 0)
+    ? el('section', { class: 'stack' }, [
+        el('div', { class: 'label' }, ['Steal from a sibling']),
+        ...data.stealable.map(s => el('div', { class: 'txn steal-row' }, [
+          el('div', { class: 'left' }, [
+            el('div', { class: 'chip', style: { background: s.owner_color || '#0F172A' } }, [s.owner_name[0]]),
+            el('div', {}, [
+              el('div', {}, [s.title]),
+              el('div', { class: 'muted', style: { fontSize: '0.7rem' } }, [s.owner_name]),
+            ]),
+          ]),
+          el('button', {
+            class: 'btn btn-primary btn-done',
+            onClick: async (e) => {
+              e.stopPropagation();
+              e.target.disabled = true;
+              e.target.textContent = '…';
+              try {
+                await api.post(`/api/assignments/${s.id}/steal`);
+                renderHome(root);
+              } catch (err) {
+                alert('Could not claim: ' + err.message);
+                e.target.disabled = false;
+                e.target.textContent = `Claim · +${s.display_points}`;
+              }
+            },
+          }, [`Claim · +${s.display_points}`]),
+        ])),
+      ])
+    : null;
+
   root.appendChild(el('div', { class: 'page stack' }, [
     el('header', { class: 'app-header' }, [
       el('h1', {}, [`Hey ${p.name}`]),
@@ -43,6 +75,7 @@ export async function renderHome(root) {
     hero,
     todaySection,
     overdueSection,
+    stealSection,
     el('div', { class: 'row', style: { marginTop: 'var(--s5)' } }, [
       el('button', { class: 'btn btn-ghost', onClick: () => logout() }, ['Sign out']),
     ]),
@@ -76,9 +109,9 @@ function renderTask(a, root, overdue = false) {
             e.target.disabled = false;
           }
         },
-      }, [`Undo · +${a.points}`]);
+      }, [`Undo · +${a.display_points}`]);
     } else {
-      action = el('span', { class: 'pts' }, [`+${a.points}`]);
+      action = el('span', { class: 'pts' }, [`+${a.display_points}`]);
     }
   } else if (a.status === 'submitted') {
     action = el('span', { class: 'pill pill-info' }, ['Waiting for parent']);
@@ -95,10 +128,10 @@ function renderTask(a, root, overdue = false) {
         } catch (err) {
           alert('Could not mark done: ' + err.message);
           e.target.disabled = false;
-          e.target.textContent = `Done · +${a.points}`;
+          e.target.textContent = `Done · +${a.display_points}`;
         }
       },
-    }, [`Done · +${a.points}`]);
+    }, [`Done · +${a.display_points}`]);
   } else if (a.anti_cheat === 'approval') {
     action = el('button', {
       class: 'btn btn-primary btn-done',
@@ -112,13 +145,13 @@ function renderTask(a, root, overdue = false) {
         } catch (err) {
           alert('Could not submit: ' + err.message);
           e.target.disabled = false;
-          e.target.textContent = `Submit · +${a.points}`;
+          e.target.textContent = `Submit · +${a.display_points}`;
         }
       },
-    }, [`Submit · +${a.points}`]);
+    }, [`Submit · +${a.display_points}`]);
   } else if (a.anti_cheat === 'photo') {
     action = el('label', { class: 'btn btn-primary btn-done photo-btn' }, [
-      `Photo · +${a.points}`,
+      `Photo · +${a.display_points}`,
       el('input', {
         type: 'file', accept: 'image/*', capture: 'environment',
         style: { display: 'none' },
@@ -142,17 +175,24 @@ function renderTask(a, root, overdue = false) {
           } catch (err) {
             alert('Upload failed: ' + err.message);
             btn.classList.remove('btn-loading');
-            btn.firstChild.nodeValue = `Photo · +${a.points}`;
+            btn.firstChild.nodeValue = `Photo · +${a.display_points}`;
           }
         },
       }),
     ]);
   }
 
+  const stolenBadge = a.stolen_from_name
+    ? el('span', { class: 'pill pill-info', style: { fontSize: '0.62rem', marginLeft: '6px' } }, [`from ${a.stolen_from_name}`])
+    : null;
+
   return el('div', { class: classes.join(' ') }, [
     el('div', { class: 'left' }, [
       el('div', { class: `ico ${ico}` }, [icoText]),
-      el('span', {}, [a.title]),
+      el('div', {}, [
+        el('span', {}, [a.title]),
+        stolenBadge,
+      ].filter(Boolean)),
     ]),
     action,
   ]);

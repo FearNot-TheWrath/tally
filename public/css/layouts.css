@@ -224,3 +224,8 @@
   object-fit: contain;
   background: var(--card-muted);
 }
+
+.steal-row {
+  border-style: dashed;
+  background: linear-gradient(0deg, var(--card-muted), var(--card));
+}
