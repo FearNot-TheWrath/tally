@@ -71,3 +71,54 @@
   max-width: 460px; width: 92%;
   max-height: 90vh; overflow-y: auto;
 }
+
+.wall-page {
+  height: 100vh; padding: 28px 32px;
+  display: flex; flex-direction: column; gap: 16px;
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-ui);
+}
+.wall-header { display: flex; justify-content: space-between; align-items: baseline; }
+.wall-header h2 { font-size: 2rem; font-weight: 700; letter-spacing: -1px; }
+.wall-header .t { font-family: var(--font-num); font-size: 1.4rem; color: var(--muted); }
+.wall-banner {
+  background: linear-gradient(135deg, var(--hero-bg-1), var(--hero-bg-2));
+  color: var(--hero-ink);
+  border-radius: var(--r-xl);
+  padding: 20px 28px;
+  display: flex; justify-content: space-between; align-items: center;
+  position: relative; overflow: hidden;
+}
+.wall-banner::after {
+  content:''; position: absolute; right: -60px; top: -60px;
+  width: 200px; height: 200px; border-radius: 50%;
+  background: radial-gradient(circle, var(--hero-glow), transparent 70%);
+}
+.wall-banner .pct {
+  font-family: var(--font-num); font-size: 3.5rem; font-weight: 600; letter-spacing: -2px;
+}
+.wall-banner .pct .denom { font-size: 1.6rem; color: var(--hero-muted); }
+.wall-banner .pct-label { color: var(--hero-muted); }
+.wall-stats { display: flex; gap: 28px; position: relative; z-index: 1; }
+.wall-stats .st-num { font-family: var(--font-num); font-size: 2rem; font-weight: 600; }
+.wall-stats .st-name { color: var(--hero-muted); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1.4px; }
+.wall-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; flex: 1; min-height: 0; }
+.wall-col {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--r-lg); padding: 18px;
+  display: flex; flex-direction: column; gap: 8px;
+  overflow: hidden;
+}
+.wall-col .col-head { display: flex; justify-content: space-between; align-items: center; }
+.wall-col .col-head h3 { font-size: 1.2rem; font-weight: 600; }
+.wall-col .meta { display: flex; gap: 12px; font-family: var(--font-num); font-size: 0.8rem; color: var(--muted); }
+.wall-col .task {
+  background: var(--card-muted);
+  border-radius: var(--r-sm); padding: 8px 12px;
+  font-size: 0.92rem;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.wall-col .task.done { color: var(--muted); text-decoration: line-through; }
+.wall-col .task.over { background: #FEF2F2; color: var(--red); }
+.wall-col .task .p { font-family: var(--font-num); font-weight: 600; color: var(--green); }
+.wall-col .task.done .p { color: var(--muted); }
