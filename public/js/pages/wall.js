@@ -78,7 +78,7 @@ async function render() {
           el('div', { class: 'av', style: { background: k.avatar_color, width: '32px', height: '32px' } }, [k.name[0]]),
         ]),
         el('div', { class: 'meta' }, [
-          el('span', {}, [`target ${k.weekly_target_pts || 0} pts`]),
+          el('span', {}, [`${k.points || 0} pts (${Math.round((k.percent || 0) * 100)}%)`]),
           el('span', {}, [`${k.streak_days || 0}d streak`]),
         ]),
         el('div', { class: 'stack', style: { gap: '6px' } },
@@ -87,8 +87,11 @@ async function render() {
             : tasks.map(t => el('div', {
                 class: 'task' + (t.status === 'done' ? ' done' : '') + (t.over ? ' over' : ''),
               }, [
-                el('span', {}, [t.title]),
-                el('span', { class: 'p' }, [`+${t.points}`]),
+                el('div', {}, [
+                  el('span', {}, [t.title]),
+                  t.stolen_from_name ? el('span', { style: { fontSize: '0.62rem', color: 'var(--muted)', marginLeft: '6px' } }, [`(from ${t.stolen_from_name})`]) : null,
+                ].filter(Boolean)),
+                el('span', { class: 'p' }, [`+${t.display_points || 0}`]),
               ]))
         ),
       ]);
