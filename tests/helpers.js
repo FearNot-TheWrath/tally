@@ -8,6 +8,10 @@ export function freshDb() {
   return db;
 }
 
-export function freshApp(db) {
-  return buildApp({ db: db || freshDb(), sessionSecret: 'test-secret' });
+export function freshApp(db, opts = {}) {
+  return buildApp({
+    db: db || freshDb(),
+    sessionSecret: 'test-secret',
+    uploadsDir: opts.uploadsDir,
+  });
 }

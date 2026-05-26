@@ -11,9 +11,10 @@ import { adminTodayRoutes } from './routes/admin/today.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-export function buildApp({ db, sessionSecret = 'dev-secret' }) {
+export function buildApp({ db, sessionSecret = 'dev-secret', uploadsDir = './uploads' }) {
   const app = express();
   app.set('db', db);
+  app.set('uploadsDir', uploadsDir);
   app.use(express.json({ limit: '8mb' }));
   app.use(cookieSession({
     name: 'tally_session',
@@ -26,14 +27,13 @@ export function buildApp({ db, sessionSecret = 'dev-secret' }) {
   app.get('/api/health', (_req, res) => res.json({ ok: true }));
   app.use('/api/auth', authRoutes());
   app.use('/api', meRoute());
-  app.use('/api', homeRoutes());
+  app.use('/api', homeRoutes({ uploadsDir }));
   app.use('/api', wallRoutes());
   app.use('/api/admin', adminPeopleRoutes());
   app.use('/api/admin', adminChoresRoutes());
   app.use('/api/admin', adminTodayRoutes());
 
   app.get('/wall', (_req, res) => res.sendFile(join(__dirname, '..', 'public', 'wall.html')));
-
   app.use(express.static(join(__dirname, '..', 'public')));
 
   return app;
