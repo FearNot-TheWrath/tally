@@ -6,6 +6,7 @@ import { authRoutes, meRoute } from './routes/auth.js';
 import { homeRoutes } from './routes/home.js';
 import { wallRoutes } from './routes/wall.js';
 import { adminPeopleRoutes } from './routes/admin/people.js';
+import { adminChoresRoutes } from './routes/admin/chores.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -27,6 +28,7 @@ export function buildApp({ db, sessionSecret = 'dev-secret' }) {
   app.use('/api', homeRoutes());
   app.use('/api', wallRoutes());
   app.use('/api/admin', adminPeopleRoutes());
+  app.use('/api/admin', adminChoresRoutes());
 
   app.use(express.static(join(__dirname, '..', 'public')));
 
