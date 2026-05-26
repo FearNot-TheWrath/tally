@@ -101,8 +101,8 @@ function editPerson(person, host) {
     ['dob', 'Date of birth', 'date'],
     ['avatar_color', 'Avatar color (hex)', 'text'],
     ['weekly_target_pts', 'Weekly target (pts)', 'number'],
-    ['base_pay_cents', 'Base pay (cents)', 'number'],
-    ['bonus_rate_cents', 'Bonus rate (cents/pt)', 'number'],
+    ['base_pay_cents', 'Base pay when target is hit ($)', 'money'],
+    ['bonus_rate_cents', 'Bonus per extra point ($)', 'money'],
   ];
 
   const inputs = fields.map(([key, label, type, opts]) => {
@@ -111,6 +111,16 @@ function editPerson(person, host) {
     if (type === 'select') {
       input = el('select', { id, onChange: e => data[key] = e.target.value },
         opts.map(o => el('option', { value: o, selected: data[key] === o }, [o])));
+    } else if (type === 'money') {
+      const dollars = data[key] != null ? (data[key] / 100).toFixed(2) : '';
+      input = el('input', {
+        id, type: 'number', step: '0.01', min: '0',
+        value: dollars,
+        onInput: e => {
+          const v = e.target.value;
+          data[key] = v === '' ? 0 : Math.round(parseFloat(v) * 100);
+        },
+      });
     } else {
       input = el('input', {
         id, type,
