@@ -1,0 +1,46 @@
+:root {
+  /* Type */
+  --font-ui: 'Inter', system-ui, sans-serif;
+  --font-num: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* Light palette (default) */
+  --bg: #FCFCFD;
+  --card: #FFFFFF;
+  --card-muted: #F8FAFC;
+  --ink: #0F172A;
+  --muted: #64748B;
+  --border: #E2E8F0;
+
+  --green: #10B981;
+  --red: #B91C1C;
+  --amber: #D97706;
+  --purple-1: #6366F1;
+  --purple-2: #8B5CF6;
+
+  /* The signature hero gradient (constant across themes) */
+  --hero-bg-1: #0F172A;
+  --hero-bg-2: #1E293B;
+  --hero-glow: rgba(99, 102, 241, 0.4);
+  --hero-ink: #FFFFFF;
+  --hero-muted: #94A3B8;
+
+  /* Spacing scale */
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px;
+
+  --r-sm: 6px; --r-md: 10px; --r-lg: 14px; --r-xl: 20px;
+
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 20px 50px rgba(15, 23, 42, 0.18);
+}
+
+[data-theme="dark"] {
+  --bg: #0A0A0A;
+  --card: #171717;
+  --card-muted: #0F0F0F;
+  --ink: #E5E5E5;
+  --muted: #737373;
+  --border: #262626;
+  --green: #22C55E;
+  --red: #F87171;
+}

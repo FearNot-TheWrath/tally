@@ -1,0 +1,90 @@
+/* ───── Buttons ───── */
+.btn {
+  display: inline-flex; align-items: center; gap: var(--s2);
+  padding: 10px 16px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--ink);
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.08s ease, box-shadow 0.12s ease, background 0.12s;
+}
+.btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+.btn-primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.btn-danger  { background: #FEE2E2; color: var(--red); border-color: #FECACA; }
+.btn-ghost   { background: transparent; }
+
+/* ───── Card ───── */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--s4);
+}
+
+/* ───── Hero card (the signature) ───── */
+.hero {
+  background: linear-gradient(135deg, var(--hero-bg-1), var(--hero-bg-2));
+  color: var(--hero-ink);
+  border-radius: var(--r-xl);
+  padding: var(--s5);
+  position: relative;
+  overflow: hidden;
+}
+.hero::after {
+  content: '';
+  position: absolute; right: -60px; top: -60px;
+  width: 200px; height: 200px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--hero-glow) 0%, transparent 70%);
+}
+.hero .label { color: var(--hero-muted); }
+.hero .big-num {
+  font-family: var(--font-num);
+  font-size: 2.6rem;
+  font-weight: 600;
+  letter-spacing: -1.5px;
+  line-height: 1;
+  margin-top: var(--s2);
+}
+.hero .big-num .denom { font-size: 1rem; color: var(--hero-muted); }
+.hero .bar { height: 6px; background: rgba(255,255,255,0.12); border-radius: 99px; margin-top: var(--s3); overflow: hidden; }
+.hero .bar-fill { height: 100%; background: linear-gradient(90deg, var(--purple-1), var(--purple-2)); border-radius: 99px; }
+
+/* ───── Transaction row (for chores) ───── */
+.txn {
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 10px 12px;
+  box-shadow: var(--shadow-sm);
+  font-size: 0.92rem;
+}
+.txn .left { display: flex; gap: var(--s2); align-items: center; }
+.txn .ico {
+  width: 30px; height: 30px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.78rem; font-weight: 700;
+  background: #EEF2FF; color: var(--purple-1);
+}
+.txn .ico.cam   { background: #FEF3C7; color: #92400E; }
+.txn .ico.appr  { background: #EDE9FE; color: #5B21B6; }
+.txn .ico.over  { background: #FEE2E2; color: var(--red); }
+.txn .ico.done  { background: #D1FAE5; color: #047857; }
+.txn .pts { font-family: var(--font-num); font-weight: 600; color: var(--green); }
+.txn.done { background: var(--card-muted); color: var(--muted); }
+.txn.done .pts { color: var(--muted); text-decoration: line-through; }
+.txn.over { border-color: #FCA5A5; background: #FEF2F2; }
+
+/* ───── Avatar ───── */
+.av {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: var(--ink); color: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 600;
+}
+.av.lg { width: 56px; height: 56px; font-size: 1.4rem; }
