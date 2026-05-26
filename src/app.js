@@ -39,7 +39,19 @@ export function buildApp({ db, sessionSecret = 'dev-secret', uploadsDir = './upl
   app.use('/api/admin', adminDayReviewRoutes());
 
   app.get('/wall', (_req, res) => res.sendFile(join(__dirname, '..', 'public', 'wall.html')));
-  app.use(express.static(join(__dirname, '..', 'public')));
+  app.use(express.static(join(__dirname, '..', 'public'), {
+    // We deploy multiple times a day; long max-age means browsers and
+    // intermediaries serve stale admin.js / home.js after a deploy and
+    // users get the "I thought you fixed that" experience. no-cache
+    // tells the browser "you may cache it, but ALWAYS revalidate" so
+    // ETag/Last-Modified gives us 304s for unchanged files and 200s
+    // for fresh code immediately on next page load.
+    setHeaders: (res, path) => {
+      if (/\.(js|mjs|css|html|json)$/.test(path)) {
+        res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+      }
+    },
+  }));
 
   return app;
 }
