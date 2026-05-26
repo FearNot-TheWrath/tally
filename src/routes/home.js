@@ -44,6 +44,31 @@ export function homeRoutes({ uploadsDir = './uploads' } = {}) {
     return doSubmit(req, res, { uploadsDir });
   });
 
+  r.post('/assignments/:id/undo', requireAnyAuth, (req, res) => {
+    const db = req.app.get('db');
+    const a = db.prepare('SELECT * FROM assignments WHERE id = ?').get(req.params.id);
+    if (!a) return res.status(404).json({ error: 'Not found' });
+    if (a.person_id !== req.user.person_id && req.user.role !== 'parent') {
+      return res.status(403).json({ error: 'Not your assignment' });
+    }
+    const chore = db.prepare('SELECT anti_cheat FROM chores WHERE id = ?').get(a.chore_id);
+    if (chore.anti_cheat !== 'honor') {
+      return res.status(400).json({ error: 'Undo only works on honor chores' });
+    }
+    if (a.status !== 'done') {
+      return res.status(400).json({ error: 'Assignment is not done; nothing to undo' });
+    }
+    db.prepare(`
+      UPDATE assignments
+      SET status = 'pending',
+          points_earned = 0,
+          late = 0,
+          updated_at = datetime('now')
+      WHERE id = ?
+    `).run(req.params.id);
+    res.json({ ok: true, status: 'pending' });
+  });
+
   return r;
 }
 

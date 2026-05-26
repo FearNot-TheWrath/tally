@@ -60,7 +60,26 @@ function renderTask(a, root, overdue = false) {
 
   let action;
   if (a.status === 'done') {
-    action = el('span', { class: 'pts' }, [`+${a.points}`]);
+    // Honor chores are reversible by tapping the row again; photo/approval are not.
+    if (a.anti_cheat === 'honor') {
+      action = el('button', {
+        class: 'btn btn-ghost btn-undo',
+        title: 'Tap to undo',
+        onClick: async (e) => {
+          e.stopPropagation();
+          e.target.disabled = true;
+          try {
+            await api.post(`/api/assignments/${a.id}/undo`);
+            renderHome(root);
+          } catch (err) {
+            alert('Could not undo: ' + err.message);
+            e.target.disabled = false;
+          }
+        },
+      }, [`Undo · +${a.points}`]);
+    } else {
+      action = el('span', { class: 'pts' }, [`+${a.points}`]);
+    }
   } else if (a.status === 'submitted') {
     action = el('span', { class: 'pill pill-info' }, ['Waiting for parent']);
   } else if (a.anti_cheat === 'honor') {
