@@ -47,9 +47,30 @@ export function homeRoutes({ uploadsDir = './uploads' } = {}) {
         : 0;
     }
 
+    const stealable = isUnlocked(db) ? db.prepare(`
+      SELECT a.id, c.title, c.weight, c.anti_cheat,
+             a.person_id AS owner_id,
+             p.name AS owner_name,
+             p.avatar_color AS owner_color
+      FROM assignments a
+      JOIN chores c ON c.id = a.chore_id
+      JOIN people p ON p.id = a.person_id
+      WHERE a.due_date = ?
+        AND a.status = 'pending'
+        AND a.person_id != ?
+        AND p.role = 'kid'
+        AND c.is_school_work = 0
+      ORDER BY p.name, c.title
+    `).all(today(), personId) : [];
+    for (const s of stealable) {
+      s.display_points = pts.totalWeight > 0
+        ? Math.round(s.weight / pts.totalWeight * target)
+        : 0;
+    }
+
     const todayList = assignments.filter(a => a.due_date === today());
     const overdueList = assignments.filter(a => a.due_date !== today());
-    res.json({ person, today: todayList, overdue: overdueList });
+    res.json({ person, today: todayList, overdue: overdueList, stealable });
   });
 
   // Backward-compat for honor chores; /submit is preferred.
@@ -86,7 +107,47 @@ export function homeRoutes({ uploadsDir = './uploads' } = {}) {
     res.json({ ok: true, status: 'pending' });
   });
 
+  r.post('/assignments/:id/steal', requireRole('kid'), (req, res) => {
+    const db = req.app.get('db');
+    const stealerId = req.user.person_id;
+    const a = db.prepare(`
+      SELECT a.*, c.is_school_work
+      FROM assignments a
+      JOIN chores c ON c.id = a.chore_id
+      WHERE a.id = ?
+    `).get(req.params.id);
+    if (!a) return res.status(404).json({ error: 'Not found' });
+    if (a.person_id === stealerId) return res.status(403).json({ error: 'Cannot steal from yourself' });
+    if (a.is_school_work) return res.status(400).json({ error: 'School work cannot be stolen' });
+    if (a.status !== 'pending') return res.status(400).json({ error: 'Only pending chores can be stolen' });
+    if (a.due_date !== today()) return res.status(400).json({ error: "Only today's chores can be stolen" });
+    if (!isUnlocked(db)) return res.status(400).json({ error: 'Stealing is not yet unlocked today' });
+
+    const result = db.prepare(`
+      UPDATE assignments
+      SET person_id = ?, stolen_from = ?, updated_at = datetime('now')
+      WHERE id = ?
+        AND status = 'pending'
+        AND person_id = ?
+    `).run(stealerId, a.person_id, req.params.id, a.person_id);
+
+    if (result.changes === 0) {
+      return res.status(409).json({ error: 'Already claimed or no longer pending' });
+    }
+    res.json({ ok: true });
+  });
+
   return r;
+}
+
+function isUnlocked(db) {
+  const row = db.prepare("SELECT value FROM settings WHERE key = 'steal_unlock_time'").get();
+  if (!row) return false;
+  const [hh, mm] = row.value.split(':').map(Number);
+  const now = new Date();
+  const cutoff = new Date();
+  cutoff.setHours(hh, mm, 0, 0);
+  return now >= cutoff;
 }
 
 function doSubmit(req, res, { honorOnly = false, uploadsDir = './uploads' } = {}) {
