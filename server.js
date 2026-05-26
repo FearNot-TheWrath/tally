@@ -1,3 +1,4 @@
+import { mkdirSync } from 'node:fs';
 import { openDb } from './src/db.js';
 import { buildApp } from './src/app.js';
 import { generateForToday } from './src/lib/assignments.js';
@@ -6,6 +7,8 @@ const PORT = process.env.PORT || 3007;
 const SECRET = process.env.SESSION_SECRET || 'dev-secret-change-me';
 
 const db = openDb('./tally.db');
+mkdirSync('./uploads', { recursive: true });
+
 const app = buildApp({ db, sessionSecret: SECRET });
 
 generateForToday(db);
