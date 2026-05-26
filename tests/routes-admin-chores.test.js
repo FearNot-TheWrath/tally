@@ -39,3 +39,34 @@ test('admin chores: full CRUD', async () => {
   const row = db.prepare('SELECT deleted_at FROM chores WHERE id = ?').get(id);
   assert.ok(row.deleted_at);
 });
+
+test('deleting a chore removes its pending assignments but keeps done ones as history', async () => {
+  const db = freshDb();
+  const kid = db.prepare("INSERT INTO people (name, role) VALUES ('K','kid') RETURNING id").get().id;
+  const app = freshApp(db);
+  const agent = await asParent(app, db);
+
+  const c = await agent.post('/api/admin/chores').send({
+    title: 'Sweep', points: 5, recurs: 'daily', anti_cheat: 'honor',
+    default_assignees: String(kid),
+  });
+  const choreId = c.body.chore.id;
+
+  // Materialize today's pending + a fake done assignment from yesterday
+  db.prepare(`
+    INSERT INTO assignments (chore_id, person_id, due_date, status)
+    VALUES (?, ?, date('now', '-1 day'), 'done')
+  `).run(choreId, kid);
+
+  // confirm at least 2 assignments exist (today pending + yesterday done)
+  const before = db.prepare('SELECT COUNT(*) AS c FROM assignments WHERE chore_id = ?').get(choreId).c;
+  assert.ok(before >= 2, `expected at least 2 assignments, got ${before}`);
+
+  const del = await agent.delete(`/api/admin/chores/${choreId}`);
+  assert.equal(del.status, 200);
+  assert.ok(del.body.removed_assignments >= 1, 'should report removed count');
+
+  const remaining = db.prepare('SELECT status FROM assignments WHERE chore_id = ?').all(choreId);
+  assert.ok(remaining.every(a => a.status === 'done'), 'only done assignments survive');
+  assert.ok(remaining.length >= 1, 'at least one done assignment kept as history');
+});

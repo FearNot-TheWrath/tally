@@ -47,11 +47,19 @@ export function adminChoresRoutes() {
 
   r.delete('/chores/:id', (req, res) => {
     const db = req.app.get('db');
-    const r2 = db.prepare(`
+    const soft = db.prepare(`
       UPDATE chores SET deleted_at = datetime('now') WHERE id = ? AND deleted_at IS NULL
     `).run(req.params.id);
-    if (r2.changes === 0) return res.status(404).json({ error: 'Not found' });
-    res.json({ ok: true });
+    if (soft.changes === 0) return res.status(404).json({ error: 'Not found' });
+    // Clean up not-yet-completed assignments so they don't keep appearing on
+    // the kid's home or the wall after the parent deleted the chore.
+    // Done/rejected/expired ones stay as history.
+    const cleanup = db.prepare(`
+      DELETE FROM assignments
+      WHERE chore_id = ?
+        AND status NOT IN ('done', 'rejected', 'expired')
+    `).run(req.params.id);
+    res.json({ ok: true, removed_assignments: cleanup.changes });
   });
 
   return r;
