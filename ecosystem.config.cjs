@@ -1,11 +1,10 @@
-export default {
+module.exports = {
   apps: [{
     name: 'tally',
     script: './server.js',
+    node_args: '--env-file=.env',
     cwd: '/home/claude/projects/tally',
     env: {
-      PORT: 3007,
-      SESSION_SECRET: 'CHANGE_THIS_BEFORE_DEPLOY',
       NODE_ENV: 'production',
     },
     out_file: '/home/claude/.pm2/logs/tally-out.log',

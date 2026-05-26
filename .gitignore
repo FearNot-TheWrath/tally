@@ -1,6 +1,8 @@
 node_modules/
 tally.db
 tally.db-journal
+tally.db-shm
+tally.db-wal
 uploads/
 .env
 .DS_Store
