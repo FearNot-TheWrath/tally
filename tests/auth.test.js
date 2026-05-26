@@ -21,3 +21,10 @@ test('migrations create chores and assignments tables', () => {
   assert.ok(tables.includes('chores'));
   assert.ok(tables.includes('assignments'));
 });
+
+test('seed migration sets default admin PIN', () => {
+  const db = freshDb();
+  const row = db.prepare("SELECT value FROM settings WHERE key='admin_pin_hash'").get();
+  assert.ok(row, 'admin_pin_hash should exist');
+  assert.ok(row.value.length > 0);
+});
