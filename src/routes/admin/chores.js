@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { requireRole } from '../../auth.js';
+import { generateForToday } from '../../lib/assignments.js';
 
 const ALLOWED_FIELDS = [
   'title', 'description', 'points', 'kind',
@@ -27,6 +28,7 @@ export function adminChoresRoutes() {
     const chore = db.prepare(`
       INSERT INTO chores (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')}) RETURNING *
     `).get(...cols.map(c => data[c]));
+    generateForToday(db);
     res.json({ chore });
   });
 
@@ -39,6 +41,7 @@ export function adminChoresRoutes() {
       UPDATE chores SET ${sets} WHERE id = ? RETURNING *
     `).get(...Object.values(data), req.params.id);
     if (!chore) return res.status(404).json({ error: 'Not found' });
+    generateForToday(db);
     res.json({ chore });
   });
 
