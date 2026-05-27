@@ -32,6 +32,8 @@ export function adminTodayRoutes() {
       const pts = calcWeekPoints(db, k.id, ws);
       k.points = pts.points;
       k.percent = pts.percent;
+      k.weighted_points = pts.weightedPoints;
+      k.bonus_points = pts.bonusPoints;
       k.projected_pay_cents = calcProjectedPay(k, pts.points);
     }
     res.json({

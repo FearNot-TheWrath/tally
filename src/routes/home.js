@@ -25,6 +25,8 @@ export function homeRoutes({ uploadsDir = './uploads' } = {}) {
     const pts = calcWeekPoints(db, personId, ws);
     person.points_this_week = pts.points;
     person.percent = pts.percent;
+    person.weighted_points = pts.weightedPoints;
+    person.bonus_points_this_week = pts.bonusPoints;
     person.projected_pay_cents = calcProjectedPay(person, pts.points);
 
     const assignments = db.prepare(`
