@@ -349,3 +349,33 @@
   font-weight: 600;
   white-space: nowrap;
 }
+.bank-balance {
+  font-family: var(--font-num);
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -1px;
+}
+.bank-txn {
+  display: grid;
+  grid-template-columns: 50px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 0;
+  font-size: 0.85rem;
+  border-bottom: 1px solid var(--border);
+}
+.bank-txn-date {
+  font-family: var(--font-num);
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.bank-txn-note {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bank-txn-amt {
+  font-family: var(--font-num);
+  font-weight: 600;
+  white-space: nowrap;
+}

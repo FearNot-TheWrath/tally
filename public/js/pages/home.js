@@ -119,12 +119,34 @@ export async function renderHome(root) {
       ])
     : null;
 
+  const bankDollars = ((p.bank_cents || 0) / 100).toFixed(2);
+  const bankSection = el('section', { class: 'stack' }, [
+    el('div', { class: 'label' }, ['Bank']),
+    el('div', { class: 'bank-balance', style: { color: p.bank_cents >= 0 ? 'var(--green)' : 'var(--red)' } }, [`$${bankDollars}`]),
+    ...(p.transactions && p.transactions.length > 0
+      ? p.transactions.map(t => {
+          const d = t.created_at ? t.created_at.slice(5, 10).replace('-', '/') : '';
+          const prefix = t.amount_cents >= 0 ? '+' : '';
+          return el('div', { class: 'bank-txn' }, [
+            el('span', { class: 'bank-txn-date' }, [d]),
+            el('span', { class: 'bank-txn-note' }, [t.note || '']),
+            el('span', {
+              class: 'bank-txn-amt',
+              style: { color: t.amount_cents >= 0 ? 'var(--green)' : 'var(--red)' },
+            }, [`${prefix}$${(Math.abs(t.amount_cents) / 100).toFixed(2)}`]),
+          ]);
+        })
+      : [el('p', { class: 'muted', style: { fontSize: '0.82rem' } }, ['No transactions yet.'])]
+    ),
+  ]);
+
   root.appendChild(el('div', { class: 'page stack' }, [
     el('header', { class: 'app-header' }, [
       el('h1', {}, [`Hey ${p.name}`]),
       el('div', { class: 'av', style: { background: p.avatar_color } }, [p.name[0]]),
     ]),
     hero,
+    bankSection,
     todaySection,
     overdueSection,
     bonusBoardSection,
