@@ -66,21 +66,46 @@ async function renderToday(host) {
     ]),
   ]));
   host.appendChild(el('div', { class: 'stack', style: { marginTop: 'var(--s4)' } },
-    d.kids.map(k => el('div', { class: 'list-row' }, [
-      el('div', { class: 'row' }, [
-        el('div', { class: 'av', style: { background: k.avatar_color } }, [k.name[0]]),
-        el('div', {}, [
-          el('div', { style: { fontWeight: 600 } }, [k.name]),
-          el('div', { class: 'muted', style: { fontSize: '0.82rem' } }, [
-            `${k.today_done}/${k.today_total} today` + (k.overdue ? ` · ${k.overdue} overdue` : ''),
+    d.kids.map(k => {
+      const detail = el('div', { class: 'stack', style: { display: 'none', marginTop: '8px', gap: '4px' } },
+        (k.assignments || []).map(a => el('div', {
+          style: {
+            fontSize: '0.82rem',
+            padding: '4px 8px',
+            borderRadius: 'var(--r-sm)',
+            background: a.status === 'done' ? 'var(--card-muted)' : 'transparent',
+            color: a.status === 'done' ? 'var(--muted)' : 'var(--ink)',
+            textDecoration: a.status === 'done' ? 'line-through' : 'none',
+            display: 'flex', justifyContent: 'space-between',
+          },
+        }, [
+          el('span', {}, [a.title]),
+          el('span', { style: { fontSize: '0.72rem', color: 'var(--muted)' } }, [
+            a.due_date !== d.today ? 'overdue' : a.status,
           ]),
-          el('div', { class: 'muted', style: { fontSize: '0.82rem' } }, [
-            `${k.points} pts · ~$${((k.projected_pay_cents || 0) / 100).toFixed(2)} this week · bank $${((k.bank_cents || 0) / 100).toFixed(2)}`,
+        ]))
+      );
+      return el('div', { class: 'list-row', style: { cursor: 'pointer', display: 'block' }, onClick: () => {
+        detail.style.display = detail.style.display === 'none' ? 'flex' : 'none';
+      }}, [
+        el('div', { style: { display: 'grid', gridTemplateColumns: '1fr auto', alignItems: 'center' } }, [
+          el('div', { class: 'row' }, [
+            el('div', { class: 'av', style: { background: k.avatar_color } }, [k.name[0]]),
+            el('div', {}, [
+              el('div', { style: { fontWeight: 600 } }, [k.name]),
+              el('div', { class: 'muted', style: { fontSize: '0.82rem' } }, [
+                `${k.today_done}/${k.today_total} today` + (k.overdue ? ` · ${k.overdue} overdue` : ''),
+              ]),
+              el('div', { class: 'muted', style: { fontSize: '0.82rem' } }, [
+                `${k.points} pts · ~$${((k.projected_pay_cents || 0) / 100).toFixed(2)} this week · bank $${((k.bank_cents || 0) / 100).toFixed(2)}`,
+              ]),
+            ]),
           ]),
+          el('span', { class: 'num pts' }, [`${k.today_total === 0 ? 100 : Math.round(k.today_done / k.today_total * 100)}%`]),
         ]),
-      ]),
-      el('span', { class: 'num pts' }, [`${k.today_total === 0 ? 100 : Math.round(k.today_done / k.today_total * 100)}%`]),
-    ]))
+        detail,
+      ]);
+    })
   ));
 }
 

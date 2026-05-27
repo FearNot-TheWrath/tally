@@ -22,13 +22,17 @@ export function adminTodayRoutes() {
     let total = 0, done = 0;
     for (const k of kids) {
       const rows = db.prepare(`
-        SELECT status, due_date FROM assignments
-        WHERE person_id = ?
-          AND (due_date = ? OR (due_date < ? AND status NOT IN ('done','expired','rejected')))
+        SELECT a.status, a.due_date, c.title
+        FROM assignments a
+        JOIN chores c ON c.id = a.chore_id
+        WHERE a.person_id = ?
+          AND (a.due_date = ? OR (a.due_date < ? AND a.status NOT IN ('done','expired','rejected')))
+        ORDER BY a.status = 'done', c.title
       `).all(k.id, t, t);
       k.today_total = rows.filter(r => r.due_date === t).length;
       k.today_done = rows.filter(r => r.due_date === t && r.status === 'done').length;
       k.overdue = rows.filter(r => r.due_date !== t).length;
+      k.assignments = rows;
       total += k.today_total;
       done += k.today_done;
 
