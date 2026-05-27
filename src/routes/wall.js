@@ -18,7 +18,7 @@ export function wallRoutes() {
     const kidIds = kids.map(k => k.id);
     const assignmentRows = kidIds.length === 0 ? [] : db.prepare(`
       SELECT a.id, a.person_id, a.due_date, a.status, a.stolen_from,
-             c.title, c.weight,
+             c.title, c.weight, c.kind, c.points AS chore_points,
              sf.name AS stolen_from_name
       FROM assignments a
       JOIN chores c ON c.id = a.chore_id
@@ -44,7 +44,13 @@ export function wallRoutes() {
       if (!kid) continue;
       const target = kid.weekly_target_pts || 0;
       const totalWeight = totals.get(kid.id) || 0;
-      a.display_points = totalWeight > 0 ? Math.round(a.weight / totalWeight * target) : 0;
+      if (a.kind === 'bonus') {
+        a.display_points = a.chore_points;
+        a.is_bonus = 1;
+      } else {
+        a.display_points = totalWeight > 0 ? Math.round(a.weight / totalWeight * target) : 0;
+        a.is_bonus = 0;
+      }
       const bucket = a.due_date === todayIso ? kid.today : kid.overdue;
       bucket.push(a);
       total++;

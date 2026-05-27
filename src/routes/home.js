@@ -32,7 +32,7 @@ export function homeRoutes({ uploadsDir = './uploads' } = {}) {
     const assignments = db.prepare(`
       SELECT a.id, a.due_date, a.status, a.note, a.photo_path,
              a.stolen_from,
-             c.title, c.weight, c.anti_cheat,
+             c.title, c.weight, c.anti_cheat, c.kind, c.points AS chore_points,
              sf.name AS stolen_from_name
       FROM assignments a
       JOIN chores c ON c.id = a.chore_id
@@ -44,9 +44,15 @@ export function homeRoutes({ uploadsDir = './uploads' } = {}) {
 
     const target = person.weekly_target_pts || 0;
     for (const a of assignments) {
-      a.display_points = pts.totalWeight > 0
-        ? Math.round(a.weight / pts.totalWeight * target)
-        : 0;
+      if (a.kind === 'bonus') {
+        a.display_points = a.chore_points;
+        a.is_bonus = 1;
+      } else {
+        a.display_points = pts.totalWeight > 0
+          ? Math.round(a.weight / pts.totalWeight * target)
+          : 0;
+        a.is_bonus = 0;
+      }
     }
 
     const stealable = isUnlocked(db) ? db.prepare(`

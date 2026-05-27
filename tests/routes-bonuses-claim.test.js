@@ -105,3 +105,18 @@ test('GET /api/wall includes unclaimed bonuses', async () => {
   assert.equal(res.body.bonuses.length, 1);
   assert.equal(res.body.bonuses[0].title, 'Up for grabs');
 });
+
+test('claimed bonus appears in kid Today list with is_bonus=1 and chore.points as display_points', async () => {
+  const db = freshDb();
+  const kid = seedKid(db, 'K');
+  const bonusId = seedBonus(db, 'Mow', 30);
+  const app = freshApp(db);
+  const agent = await loginKid(app, kid);
+  await agent.post(`/api/bonuses/${bonusId}/claim`);
+
+  const home = await agent.get('/api/home');
+  const row = home.body.today.find(t => t.title === 'Mow');
+  assert.ok(row);
+  assert.equal(row.is_bonus, 1);
+  assert.equal(row.display_points, 30);
+});
