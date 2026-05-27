@@ -74,6 +74,9 @@ async function renderToday(host) {
           el('div', { class: 'muted', style: { fontSize: '0.82rem' } }, [
             `${k.today_done}/${k.today_total} today` + (k.overdue ? ` · ${k.overdue} overdue` : ''),
           ]),
+          el('div', { class: 'muted', style: { fontSize: '0.82rem' } }, [
+            `${k.points} pts · ~$${((k.projected_pay_cents || 0) / 100).toFixed(2)} this week · bank $${((k.bank_cents || 0) / 100).toFixed(2)}`,
+          ]),
         ]),
       ]),
       el('span', { class: 'num pts' }, [`${k.today_total === 0 ? 100 : Math.round(k.today_done / k.today_total * 100)}%`]),
