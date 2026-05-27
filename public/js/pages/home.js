@@ -22,7 +22,13 @@ export async function renderHome(root) {
       el('span', {}, [`~$${projDollars} projected`]),
       el('span', {}, [`${p.streak_days || 0} day streak`]),
     ]),
-  ]);
+    p.streak_at_risk
+      ? el('div', { class: 'streak-at-risk', style: { marginTop: '8px' } }, ["Streak at risk — finish today's chores"])
+      : null,
+    p.on_freeze
+      ? el('div', { class: 'streak-on-freeze', style: { marginTop: '8px' } }, ['On freeze — streak protected'])
+      : null,
+  ].filter(Boolean));
 
   const todaySection = el('section', { class: 'stack' }, [
     el('div', { class: 'label' }, ['Today']),
