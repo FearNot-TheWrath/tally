@@ -6,6 +6,7 @@ const TABS = [
   { key: 'day-review', label: 'Day review', render: renderDayReview },
   { key: 'approvals',  label: 'Approvals',  render: renderApprovals },
   { key: 'bonuses',    label: 'Bonus board', render: renderBonuses },
+  { key: 'bank',       label: 'Bank',       render: renderBank },
   { key: 'people',     label: 'People',     render: renderPeople },
   { key: 'chores',     label: 'Chores',     render: renderChores },
   { key: 'settings',   label: 'Settings',   render: renderSettings },
@@ -528,6 +529,113 @@ async function renderSettings(host) {
     'Streak warning time (24-hour local)',
     'After this time, a kid with an incomplete day and an active streak sees a "Streak at risk" warning.',
   ));
+
+  const dayField = el('div', { class: 'form-field' }, [
+    el('label', {}, ['Payout day']),
+    el('select', {
+      onChange: async (e) => {
+        try {
+          await api.patch('/api/admin/settings/payout_day', { value: e.target.value });
+          e.target.style.borderColor = 'var(--green)';
+          setTimeout(() => { e.target.style.borderColor = ''; }, 800);
+        } catch (err) { alert('Save failed: ' + err.message); }
+      },
+    }, ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'].map(d =>
+      el('option', { value: d, selected: (s.payout_day || 'sunday') === d }, [d.charAt(0).toUpperCase() + d.slice(1)])
+    )),
+    el('div', { class: 'muted', style: { fontSize: '0.78rem', marginTop: '4px' } }, [
+      'Day of week when weekly earnings are deposited into kid balances.',
+    ]),
+  ]);
+
+  host.appendChild(dayField);
+  host.appendChild(timeField(
+    'payout_time', '20:00',
+    'Payout time (24-hour local)',
+    'Time on payout day when the deposit happens (on next app visit after this time).',
+  ));
+}
+
+/* ───── Bank tab ───── */
+async function renderBank(host) {
+  clear(host);
+  const { kids } = await api.get('/api/admin/bank');
+
+  host.appendChild(el('h3', { style: { marginBottom: 'var(--s4)' } }, ['Bank']));
+
+  for (const kid of kids) {
+    const dollars = ((kid.bank_cents || 0) / 100).toFixed(2);
+    const card = el('div', { class: 'card', style: { marginBottom: 'var(--s4)' } }, [
+      el('div', { class: 'row spaced', style: { marginBottom: 'var(--s3)' } }, [
+        el('div', { class: 'row' }, [
+          el('div', { class: 'av', style: { background: kid.avatar_color } }, [kid.name[0]]),
+          el('div', {}, [
+            el('div', { style: { fontWeight: 600 } }, [kid.name]),
+            el('div', { style: { fontFamily: 'var(--font-num)', fontSize: '1.4rem', fontWeight: 700, color: 'var(--green)' } }, [`$${dollars}`]),
+          ]),
+        ]),
+        el('button', { class: 'btn btn-primary', onClick: () => adjustModal(kid, host) }, ['Adjust']),
+      ]),
+      ...(kid.transactions.length > 0
+        ? kid.transactions.map(t => {
+            const d = t.created_at ? t.created_at.slice(0, 10) : '';
+            const amt = (Math.abs(t.amount_cents) / 100).toFixed(2);
+            const prefix = t.amount_cents >= 0 ? '+' : '-';
+            const color = t.amount_cents >= 0 ? 'var(--green)' : 'var(--red)';
+            return el('div', { class: 'bank-txn' }, [
+              el('span', { class: 'bank-txn-date' }, [d]),
+              el('span', { class: 'bank-txn-note' }, [t.note || '']),
+              el('span', { class: 'bank-txn-amt', style: { color } }, [`${prefix}$${amt}`]),
+            ]);
+          })
+        : [el('p', { class: 'muted', style: { fontSize: '0.82rem' } }, ['No transactions yet.'])]
+      ),
+    ]);
+    host.appendChild(card);
+  }
+}
+
+function adjustModal(kid, host) {
+  let amountVal = '';
+  let noteVal = '';
+
+  const modal = el('div', { class: 'modal-backdrop', onClick: e => { if (e.target === modal) modal.remove(); } }, [
+    el('div', { class: 'modal' }, [
+      el('h3', { style: { marginBottom: 'var(--s3)' } }, [`Adjust ${kid.name}'s balance`]),
+      el('div', { class: 'form-field' }, [
+        el('label', {}, ['Amount ($)']),
+        el('input', { type: 'number', step: '0.01', min: '0', placeholder: '5.00', onInput: e => amountVal = e.target.value }),
+      ]),
+      el('div', { class: 'form-field' }, [
+        el('label', {}, ['Note (required)']),
+        el('input', { type: 'text', placeholder: 'Bought a book', onInput: e => noteVal = e.target.value }),
+      ]),
+      el('div', { class: 'row spaced', style: { marginTop: 'var(--s4)' } }, [
+        el('button', { class: 'btn btn-ghost', onClick: () => modal.remove() }, ['Cancel']),
+        el('div', { class: 'row' }, [
+          el('button', { class: 'btn btn-danger', onClick: async () => {
+            const cents = Math.round(parseFloat(amountVal) * 100);
+            if (!cents || !noteVal.trim()) { alert('Amount and note required'); return; }
+            try {
+              await api.post(`/api/admin/bank/${kid.id}/adjust`, { amount_cents: -cents, note: noteVal.trim() });
+              modal.remove();
+              renderBank(host);
+            } catch (e) { alert(e.message); }
+          }}, ['Deduct']),
+          el('button', { class: 'btn btn-primary', onClick: async () => {
+            const cents = Math.round(parseFloat(amountVal) * 100);
+            if (!cents || !noteVal.trim()) { alert('Amount and note required'); return; }
+            try {
+              await api.post(`/api/admin/bank/${kid.id}/adjust`, { amount_cents: cents, note: noteVal.trim() });
+              modal.remove();
+              renderBank(host);
+            } catch (e) { alert(e.message); }
+          }}, ['Add']),
+        ]),
+      ]),
+    ]),
+  ]);
+  document.body.appendChild(modal);
 }
 
 /* ───── Bonus Board tab ───── */
