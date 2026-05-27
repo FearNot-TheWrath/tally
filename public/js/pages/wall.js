@@ -86,10 +86,11 @@ async function render() {
             tasks.length === 0
               ? [el('p', { class: 'muted', style: { fontSize: '0.85rem' } }, ['All clear.'])]
               : tasks.map(t => el('div', {
-                  class: 'task' + (t.status === 'done' ? ' done' : '') + (t.over ? ' over' : ''),
+                  class: 'task' + (t.status === 'done' ? ' done' : '') + (t.over ? ' over' : '') + (t.is_bonus ? ' bonus' : ''),
                 }, [
                   el('div', {}, [
                     el('span', {}, [t.title]),
+                    t.is_bonus ? el('span', { style: { fontSize: '0.62rem', color: '#92400E', marginLeft: '6px' } }, ['★']) : null,
                     t.stolen_from_name ? el('span', { style: { fontSize: '0.62rem', color: 'var(--muted)', marginLeft: '6px' } }, [`(from ${t.stolen_from_name})`]) : null,
                   ].filter(Boolean)),
                   el('span', { class: 'p' }, [`+${t.display_points || 0}`]),
@@ -100,6 +101,18 @@ async function render() {
     })
   );
 
+  const bonusStrip = (data.bonuses && data.bonuses.length > 0)
+    ? el('div', { class: 'wall-bonus-strip' }, [
+        el('div', { class: 'wall-bonus-strip-label' }, ['Bonus board · up for grabs']),
+        el('div', { class: 'wall-bonus-strip-items' },
+          data.bonuses.map(b => el('div', { class: 'wall-bonus-item' }, [
+            el('div', { class: 'wall-bonus-title' }, [b.title]),
+            el('div', { class: 'wall-bonus-pts' }, [`+${b.points}`]),
+          ]))
+        ),
+      ])
+    : null;
+
   root.appendChild(el('div', { class: 'wall-page' }, [
     el('div', { class: 'wall-header' }, [
       el('h2', {}, [`The Lopez House · ${fmtDate(now)}`]),
@@ -107,7 +120,8 @@ async function render() {
     ]),
     banner,
     cols,
-  ]));
+    bonusStrip,
+  ].filter(Boolean)));
 
   // After layout settles, turn on auto-scroll for any column whose task
   // list overflows its visible area. Duplicate the children so the marquee
