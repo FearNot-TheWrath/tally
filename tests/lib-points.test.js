@@ -27,7 +27,7 @@ test('calcWeekPoints with no assignments returns zeros', () => {
   const db = freshDb();
   const kid = seedKid(db);
   const r = calcWeekPoints(db, kid, weekStart(today()));
-  assert.deepEqual(r, { totalWeight: 0, doneWeight: 0, percent: 0, points: 0 });
+  assert.deepEqual(r, { totalWeight: 0, doneWeight: 0, weightedPercent: 0, weightedPoints: 0, bonusPoints: 0, percent: 0, points: 0 });
 });
 
 test('calcWeekPoints sums weights and computes percent', () => {
@@ -129,4 +129,54 @@ test('calcWeekPoints forecast skips deleted chores', () => {
   db.prepare("INSERT INTO chores (title, weight, recurs, default_assignees, deleted_at) VALUES ('Gone', 5, 'daily', ?, datetime('now'))").run(String(kid));
   const r = calcWeekPoints(db, kid, ws);
   assert.equal(r.totalWeight, 0);
+});
+
+test('calcWeekPoints adds bonusPoints from done bonus chores', () => {
+  const db = freshDb();
+  const kid = seedKid(db);
+  const ws = weekStart(today());
+
+  // Regular daily chore, weight 5
+  const regular = db.prepare(
+    "INSERT INTO chores (title, weight, recurs, default_assignees) VALUES ('Daily', 5, 'daily', ?) RETURNING id"
+  ).get(String(kid)).id;
+  seedAssignment(db, regular, kid, today(), 'done');
+
+  // Bonus chore worth 30 points, completed today
+  const bonus = db.prepare(
+    "INSERT INTO chores (title, points, kind, recurs, default_assignees) VALUES ('Mow', 30, 'bonus', 'none', '') RETURNING id"
+  ).get().id;
+  seedAssignment(db, bonus, kid, today(), 'done');
+
+  const r = calcWeekPoints(db, kid, ws);
+  assert.equal(r.bonusPoints, 30);
+  assert.ok(r.weightedPoints >= 0);
+  assert.equal(r.points, r.weightedPoints + 30);
+  assert.equal(r.percent, r.points / 100);
+});
+
+test('calcWeekPoints bonusPoints excludes pending bonus assignments', () => {
+  const db = freshDb();
+  const kid = seedKid(db);
+  const ws = weekStart(today());
+  const bonus = db.prepare(
+    "INSERT INTO chores (title, points, kind, recurs, default_assignees) VALUES ('Pending bonus', 50, 'bonus', 'none', '') RETURNING id"
+  ).get().id;
+  seedAssignment(db, bonus, kid, today(), 'pending');
+
+  const r = calcWeekPoints(db, kid, ws);
+  assert.equal(r.bonusPoints, 0, 'pending bonuses do not contribute');
+});
+
+test('calcWeekPoints bonusPoints filtered by week', () => {
+  const db = freshDb();
+  const kid = seedKid(db);
+  const ws = weekStart(today());
+  const bonus = db.prepare(
+    "INSERT INTO chores (title, points, kind, recurs, default_assignees) VALUES ('Last week', 25, 'bonus', 'none', '') RETURNING id"
+  ).get().id;
+  seedAssignment(db, bonus, kid, '2020-01-01', 'done');
+
+  const r = calcWeekPoints(db, kid, ws);
+  assert.equal(r.bonusPoints, 0, 'out-of-week done bonus excluded');
 });
