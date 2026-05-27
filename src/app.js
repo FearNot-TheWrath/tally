@@ -11,6 +11,7 @@ import { adminTodayRoutes } from './routes/admin/today.js';
 import { adminApprovalsRoutes, uploadsRoute } from './routes/admin/approvals.js';
 import { adminDayReviewRoutes } from './routes/admin/day-review.js';
 import { adminSettingsRoutes } from './routes/admin/settings.js';
+import { adminBonusesRoutes } from './routes/admin/bonuses.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -39,6 +40,7 @@ export function buildApp({ db, sessionSecret = 'dev-secret', uploadsDir = './upl
   app.use('/api/admin', adminApprovalsRoutes());
   app.use('/api/admin', adminDayReviewRoutes());
   app.use('/api/admin', adminSettingsRoutes());
+  app.use('/api/admin', adminBonusesRoutes());
 
   app.get('/wall', (_req, res) => res.sendFile(join(__dirname, '..', 'public', 'wall.html')));
   app.use(express.static(join(__dirname, '..', 'public'), {
