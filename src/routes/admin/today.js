@@ -3,6 +3,7 @@ import { requireRole } from '../../auth.js';
 import { today, weekStart } from '../../lib/dates.js';
 import { calcWeekPoints, calcProjectedPay } from '../../lib/points.js';
 import { currentStreak, isOnFreeze } from '../../lib/streak.js';
+import { runPayoutIfDue } from '../../lib/payout.js';
 
 export function adminTodayRoutes() {
   const r = Router();
@@ -10,10 +11,11 @@ export function adminTodayRoutes() {
 
   r.get('/today', (req, res) => {
     const db = req.app.get('db');
+    runPayoutIfDue(db);
     const t = today();
     const ws = weekStart(t);
     const kids = db.prepare(`
-      SELECT id, name, avatar_color, weekly_target_pts, base_pay_cents, bonus_rate_cents
+      SELECT id, name, avatar_color, weekly_target_pts, base_pay_cents, bonus_rate_cents, bank_cents
       FROM people WHERE role = 'kid' ORDER BY name
     `).all();
 
