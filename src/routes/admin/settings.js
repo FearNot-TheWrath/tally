@@ -5,6 +5,7 @@ import { requireRole } from '../../auth.js';
 // in READABLE_KEYS (no secrets — secrets like admin_pin_hash never appear).
 const EDITABLE_KEYS = new Set([
   'steal_unlock_time',
+  'streak_warning_time',
   'late_tax_pct_default',
   'reminder_time',
   'payout_day',

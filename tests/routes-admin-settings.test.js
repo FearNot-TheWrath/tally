@@ -40,6 +40,17 @@ test('PATCH rejects unknown keys (whitelist)', async () => {
   assert.equal(res.status, 400);
 });
 
+test('PATCH /api/admin/settings/streak_warning_time works (whitelisted)', async () => {
+  const db = freshDb();
+  const app = freshApp(db);
+  const agent = await asParent(app, db);
+  const res = await agent.patch('/api/admin/settings/streak_warning_time').send({ value: '19:30' });
+  assert.equal(res.status, 200);
+  assert.equal(res.body.setting.value, '19:30');
+  const row = db.prepare("SELECT value FROM settings WHERE key='streak_warning_time'").get();
+  assert.equal(row.value, '19:30');
+});
+
 test('settings endpoints reject non-parent', async () => {
   const db = freshDb();
   const kid = db.prepare("INSERT INTO people (name, role) VALUES ('K','kid') RETURNING id").get().id;
