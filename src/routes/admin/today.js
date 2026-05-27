@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { requireRole } from '../../auth.js';
 import { today, weekStart } from '../../lib/dates.js';
 import { calcWeekPoints, calcProjectedPay } from '../../lib/points.js';
+import { currentStreak, isOnFreeze } from '../../lib/streak.js';
 
 export function adminTodayRoutes() {
   const r = Router();
@@ -35,6 +36,8 @@ export function adminTodayRoutes() {
       k.weighted_points = pts.weightedPoints;
       k.bonus_points = pts.bonusPoints;
       k.projected_pay_cents = calcProjectedPay(k, pts.points);
+      k.streak_days = currentStreak(db, k.id);
+      k.on_freeze = isOnFreeze(db, k.id);
     }
     res.json({
       house_pct: total === 0 ? 100 : Math.round((done / total) * 100),

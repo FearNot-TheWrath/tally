@@ -43,3 +43,15 @@ test('GET /api/admin/today returns points, percent, projected_pay_cents per kid 
   assert.equal(k.points, 14, '2/14 of weekly weight done = 14 pts');
   assert.equal(k.projected_pay_cents, 140);
 });
+
+test('GET /api/admin/today returns per-kid streak_days and on_freeze', async () => {
+  const db = freshDb();
+  db.prepare("INSERT INTO people (name, role, weekly_target_pts, freeze_start, freeze_end) VALUES ('K','kid',100,date('now','localtime'),date('now','localtime'))").run();
+  const app = freshApp(db);
+  const agent = await asParent(app, db);
+  const res = await agent.get('/api/admin/today');
+  assert.equal(res.status, 200);
+  const k = res.body.kids[0];
+  assert.equal(typeof k.streak_days, 'number');
+  assert.equal(k.on_freeze, true);
+});
