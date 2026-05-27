@@ -44,7 +44,7 @@ test('purgeOldPhotos nulls photo_path on assignment row when file is purged', ()
     const oldPath = writeFakeJpeg(root, '2026-05', 7, 10);
     db.prepare(`
       INSERT INTO assignments (id, chore_id, person_id, due_date, status, photo_path)
-      VALUES (7, ?, ?, date('now'), 'submitted', ?)
+      VALUES (7, ?, ?, date('now', 'localtime'), 'submitted', ?)
     `).run(cId, kid, oldPath);
 
     purgeOldPhotos(db, root, 5);

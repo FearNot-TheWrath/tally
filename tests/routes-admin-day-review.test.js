@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import request from 'supertest';
 import { freshApp, freshDb } from './helpers.js';
+import { today } from '../src/lib/dates.js';
 
 async function asParent(app, db) {
   const id = db.prepare("INSERT INTO people (name, role) VALUES ('Mom','parent') RETURNING id").get().id;
@@ -73,7 +74,7 @@ test('day-review without ?date defaults to today', async () => {
   const db = freshDb();
   const kid = seedKid(db, 'K');
   const c = seedChore(db, 'X', 'photo', kid);
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = today();
   seedAssignment(db, c, kid, todayStr, 'submitted');
   const app = freshApp(db);
   const { agent } = await asParent(app, db);

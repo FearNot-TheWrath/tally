@@ -26,18 +26,20 @@ test('GET /api/admin/today returns counts and a per-kid summary', async () => {
   assert.equal(res.body.kids[0].today_total, 1);
 });
 
-test('GET /api/admin/today returns points, percent, projected_pay_cents per kid', async () => {
+test('GET /api/admin/today returns points, percent, projected_pay_cents per kid (with forecast)', async () => {
   const db = freshDb();
   const kid = db.prepare("INSERT INTO people (name, role, weekly_target_pts, base_pay_cents, bonus_rate_cents) VALUES ('K','kid',100,1000,10) RETURNING id").get().id;
   const c = db.prepare("INSERT INTO chores (title, weight, recurs, default_assignees) VALUES ('A', 2, 'daily', ?) RETURNING id").get(String(kid)).id;
-  db.prepare("INSERT INTO assignments (chore_id, person_id, due_date, status) VALUES (?, ?, date('now'), 'done')").run(c, kid);
+  // Today materialized: 1 done (weight 2). Other 6 days forecast: 6 × 2 = 12.
+  // Total = 14, done = 2, percent ≈ 0.143, points = 14.
+  // Pay derives from rounded points (consistent with what user sees): 14/100 × 1000 = 140 cents.
+  db.prepare("INSERT INTO assignments (chore_id, person_id, due_date, status) VALUES (?, ?, date('now', 'localtime'), 'done')").run(c, kid);
 
   const app = freshApp(db);
   const agent = await asParent(app, db);
   const res = await agent.get('/api/admin/today');
   assert.equal(res.status, 200);
   const k = res.body.kids[0];
-  assert.equal(k.points, 100, 'all weight done = 100 pts');
-  assert.equal(k.percent, 1);
-  assert.equal(k.projected_pay_cents, 1000);
+  assert.equal(k.points, 14, '2/14 of weekly weight done = 14 pts');
+  assert.equal(k.projected_pay_cents, 140);
 });

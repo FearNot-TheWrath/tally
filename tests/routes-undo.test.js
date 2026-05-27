@@ -10,7 +10,7 @@ function seedDoneHonor(db, kidId) {
   `).get(String(kidId)).id;
   return db.prepare(`
     INSERT INTO assignments (chore_id, person_id, due_date, status, points_earned)
-    VALUES (?, ?, date('now'), 'done', 5) RETURNING id
+    VALUES (?, ?, date('now', 'localtime'), 'done', 5) RETURNING id
   `).get(c, kidId).id;
 }
 
@@ -21,7 +21,7 @@ function seedSubmittedPhoto(db, kidId) {
   `).get(String(kidId)).id;
   return db.prepare(`
     INSERT INTO assignments (chore_id, person_id, due_date, status, photo_path)
-    VALUES (?, ?, date('now'), 'submitted', '/fake/path.jpg') RETURNING id
+    VALUES (?, ?, date('now', 'localtime'), 'submitted', '/fake/path.jpg') RETURNING id
   `).get(c, kidId).id;
 }
 
@@ -61,7 +61,7 @@ test('undo rejects a pending honor chore (nothing to undo)', async () => {
   const db = freshDb();
   const kid = db.prepare("INSERT INTO people (name, role) VALUES ('K','kid') RETURNING id").get().id;
   const c = db.prepare("INSERT INTO chores (title, points, default_assignees, anti_cheat) VALUES ('X',5,?,'honor') RETURNING id").get(String(kid)).id;
-  const aId = db.prepare("INSERT INTO assignments (chore_id, person_id, due_date, status) VALUES (?,?,date('now'),'pending') RETURNING id").get(c, kid).id;
+  const aId = db.prepare("INSERT INTO assignments (chore_id, person_id, due_date, status) VALUES (?,?,date('now', 'localtime'),'pending') RETURNING id").get(c, kid).id;
   const app = freshApp(db);
   const agent = await loginKid(app, kid);
 

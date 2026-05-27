@@ -87,3 +87,46 @@ test('calcProjectedPay handles zero target gracefully', () => {
   const person = { weekly_target_pts: 0, base_pay_cents: 1000, bonus_rate_cents: 10 };
   assert.equal(calcProjectedPay(person, 0), 0);
 });
+
+test('calcWeekPoints forecasts future days when chore has the kid in default_assignees', () => {
+  const db = freshDb();
+  const kid = seedKid(db);
+  const ws = weekStart(today());
+  // Daily chore with this kid in default_assignees, weight 2. Nothing materialized.
+  db.prepare("INSERT INTO chores (title, weight, recurs, default_assignees) VALUES ('Daily', 2, 'daily', ?)").run(String(kid));
+  const r = calcWeekPoints(db, kid, ws);
+  assert.equal(r.totalWeight, 14, 'forecast 7 days × weight 2 = 14');
+  assert.equal(r.doneWeight, 0);
+});
+
+test('calcWeekPoints mixes materialized days with forecast for the rest', () => {
+  const db = freshDb();
+  const kid = seedKid(db);
+  const ws = weekStart(today());
+  const cId = db.prepare("INSERT INTO chores (title, weight, recurs, default_assignees) VALUES ('Daily', 2, 'daily', ?) RETURNING id").get(String(kid)).id;
+  // Today: materialize 1 done assignment for this chore
+  db.prepare("INSERT INTO assignments (chore_id, person_id, due_date, status) VALUES (?, ?, date('now', 'localtime'), 'done')").run(cId, kid);
+  const r = calcWeekPoints(db, kid, ws);
+  // Today is materialized (weight 2); the other 6 days are forecast (6 × 2 = 12)
+  assert.equal(r.totalWeight, 14);
+  assert.equal(r.doneWeight, 2);
+});
+
+test('calcWeekPoints forecast respects weekly day-of-week filter', () => {
+  const db = freshDb();
+  const kid = seedKid(db);
+  const ws = weekStart(today());
+  // Weekly chore on Monday only (dow = 1)
+  db.prepare("INSERT INTO chores (title, weight, recurs, recurs_days, default_assignees) VALUES ('Mon-only', 3, 'weekly', '1', ?)").run(String(kid));
+  const r = calcWeekPoints(db, kid, ws);
+  assert.equal(r.totalWeight, 3, 'only Monday should count in the forecast');
+});
+
+test('calcWeekPoints forecast skips deleted chores', () => {
+  const db = freshDb();
+  const kid = seedKid(db);
+  const ws = weekStart(today());
+  db.prepare("INSERT INTO chores (title, weight, recurs, default_assignees, deleted_at) VALUES ('Gone', 5, 'daily', ?, datetime('now'))").run(String(kid));
+  const r = calcWeekPoints(db, kid, ws);
+  assert.equal(r.totalWeight, 0);
+});

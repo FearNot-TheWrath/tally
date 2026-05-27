@@ -20,7 +20,7 @@ function seedSubmitted(db, kidId, options = {}) {
   `).get(String(kidId), options.antiCheat || 'photo').id;
   return db.prepare(`
     INSERT INTO assignments (chore_id, person_id, due_date, status, submitted_at, photo_path, note)
-    VALUES (?, ?, date('now'), 'submitted', datetime('now'), ?, ?) RETURNING id
+    VALUES (?, ?, date('now', 'localtime'), 'submitted', datetime('now'), ?, ?) RETURNING id
   `).get(c, kidId, options.photoPath || null, options.note || '').id;
 }
 
@@ -145,7 +145,7 @@ test('photo serving requires auth (parent or owning kid); strangers get 401/403'
     const cId = db.prepare("INSERT INTO chores (title, points, default_assignees, anti_cheat) VALUES ('X',5,?,'photo') RETURNING id").get(String(owner)).id;
     db.prepare(`
       INSERT INTO assignments (id, chore_id, person_id, due_date, status, photo_path)
-      VALUES (?, ?, ?, date('now'), 'submitted', ?)
+      VALUES (?, ?, ?, date('now', 'localtime'), 'submitted', ?)
     `).run(aId, cId, owner, filePath);
     const app = freshApp(db, { uploadsDir: root });
 

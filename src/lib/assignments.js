@@ -24,7 +24,7 @@ export function generateForToday(db, date = today()) {
   tx(chores);
 }
 
-function shouldRunOn(chore, isoDate, dow) {
+export function shouldRunOn(chore, isoDate, dow) {
   switch (chore.recurs) {
     case 'daily':
       return true;

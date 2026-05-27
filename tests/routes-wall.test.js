@@ -26,7 +26,7 @@ test('GET /api/wall populates per-kid points, percent, and stolen_from_name on s
   const b = db.prepare("INSERT INTO people (name, role, weekly_target_pts) VALUES ('B','kid',100) RETURNING id").get().id;
   const c1 = db.prepare("INSERT INTO chores (title, weight, recurs, default_assignees) VALUES ('X',2,'daily',?) RETURNING id").get(String(a)).id;
   // assignment given to B, but stolen from A
-  db.prepare("INSERT INTO assignments (chore_id, person_id, due_date, status, stolen_from) VALUES (?, ?, date('now'), 'pending', ?)").run(c1, b, a);
+  db.prepare("INSERT INTO assignments (chore_id, person_id, due_date, status, stolen_from) VALUES (?, ?, date('now', 'localtime'), 'pending', ?)").run(c1, b, a);
 
   const res = await request(freshApp(db)).get('/api/wall');
   assert.equal(res.status, 200);

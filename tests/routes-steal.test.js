@@ -20,7 +20,7 @@ function seedChore(db, title, weight = 3, isSchool = 0) {
   return db.prepare("INSERT INTO chores (title, weight, is_school_work, recurs) VALUES (?, ?, ?, 'daily') RETURNING id").get(title, weight, isSchool).id;
 }
 function seedAssignment(db, choreId, kidId, status = 'pending') {
-  return db.prepare("INSERT INTO assignments (chore_id, person_id, due_date, status) VALUES (?, ?, date('now'), ?) RETURNING id").get(choreId, kidId, status).id;
+  return db.prepare("INSERT INTO assignments (chore_id, person_id, due_date, status) VALUES (?, ?, date('now', 'localtime'), ?) RETURNING id").get(choreId, kidId, status).id;
 }
 async function loginKid(app, id) {
   const agent = request.agent(app);

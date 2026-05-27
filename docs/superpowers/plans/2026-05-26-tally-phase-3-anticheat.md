@@ -4,7 +4,7 @@
 
 **Goal:** Make photo-flagged and approval-flagged chores actually completable: kid taps a chore, captures a photo (or just submits for approval), parent reviews from admin, approves or rejects.
 
-**Architecture:** New `POST /api/assignments/:id/submit` endpoint accepts an optional multipart photo upload (multer + sharp for resize + EXIF strip), persists to `./uploads/YYYY-MM/<id>.jpg`, and moves the assignment to `status='submitted'`. New `POST /api/assignments/:id/approve` and `/reject` endpoints let parents resolve the queue. New `Approvals` admin tab shows the pending queue with inline photos. Photo files served through an auth-gated `/uploads/...` route so siblings can't browse each other's submissions. Kid home replaces the "Needs photo" / "Needs approval" pills with active flow buttons.
+**Architecture:** New `POST /api/assignments/:id/submit` endpoint accepts an optional multipart photo upload (multer + sharp for resize + EXIF strip), persists to `./uploads/YYYY-MM/<id>.jpg`, and moves the assignment to `status='submitted'`. New `POST /api/assignments/:id/approve` and `/reject` endpoints let parents resolve the queue; both delete the photo file and null `photo_path` since the photo is no longer needed once reviewed. New `Approvals` admin tab shows the pending queue with inline photos. Photo files served through an auth-gated `/uploads/...` route so siblings can't browse each other's submissions. Kid home replaces the "Needs photo" / "Needs approval" pills with active flow buttons. A daily retention sweep deletes any photo file older than 5 days as a catch-all for abandoned submissions.
 
 **Tech Stack:**
 - Server: multer (^1.4.5-lts), sharp (^0.33), existing Express 5 + better-sqlite3

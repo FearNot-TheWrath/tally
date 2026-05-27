@@ -16,7 +16,7 @@ function seedChore(db, antiCheat, kidId) {
 function seedAssignment(db, choreId, kidId) {
   return db.prepare(`
     INSERT INTO assignments (chore_id, person_id, due_date, status)
-    VALUES (?, ?, date('now'), 'pending') RETURNING id
+    VALUES (?, ?, date('now', 'localtime'), 'pending') RETURNING id
   `).get(choreId, kidId).id;
 }
 async function loginKid(app, kidId) {

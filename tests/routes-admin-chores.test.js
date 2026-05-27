@@ -55,7 +55,7 @@ test('deleting a chore removes its pending assignments but keeps done ones as hi
   // Materialize today's pending + a fake done assignment from yesterday
   db.prepare(`
     INSERT INTO assignments (chore_id, person_id, due_date, status)
-    VALUES (?, ?, date('now', '-1 day'), 'done')
+    VALUES (?, ?, date('now', 'localtime', '-1 day'), 'done')
   `).run(choreId, kid);
 
   // confirm at least 2 assignments exist (today pending + yesterday done)
