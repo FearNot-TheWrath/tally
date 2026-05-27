@@ -5,6 +5,7 @@ const TABS = [
   { key: 'today',      label: 'Today',      render: renderToday },
   { key: 'day-review', label: 'Day review', render: renderDayReview },
   { key: 'approvals',  label: 'Approvals',  render: renderApprovals },
+  { key: 'bonuses',    label: 'Bonus board', render: renderBonuses },
   { key: 'people',     label: 'People',     render: renderPeople },
   { key: 'chores',     label: 'Chores',     render: renderChores },
   { key: 'settings',   label: 'Settings',   render: renderSettings },
@@ -512,4 +513,115 @@ async function renderSettings(host) {
   ]);
 
   host.appendChild(stealField);
+}
+
+/* ───── Bonus Board tab ───── */
+async function renderBonuses(host) {
+  clear(host);
+
+  const form = {
+    title: '',
+    points: 10,
+    anti_cheat: 'honor',
+    description: '',
+    photo_prompt: '',
+  };
+  const photoPromptField = el('div', { class: 'form-field', style: { display: 'none' } }, [
+    el('label', {}, ['Photo prompt (shown to the kid)']),
+    el('input', { type: 'text', value: form.photo_prompt, onInput: e => form.photo_prompt = e.target.value }),
+  ]);
+  const antiCheatSelect = el('select', {
+    onChange: e => {
+      form.anti_cheat = e.target.value;
+      photoPromptField.style.display = e.target.value === 'photo' ? 'flex' : 'none';
+    },
+  }, ['honor', 'photo', 'approval'].map(o =>
+    el('option', { value: o, selected: form.anti_cheat === o }, [o])));
+
+  const formCard = el('div', { class: 'card', style: { marginBottom: 'var(--s4)' } }, [
+    el('h3', { style: { marginBottom: 'var(--s3)' } }, ['Post a bonus']),
+    el('div', { class: 'form-field' }, [
+      el('label', {}, ['Title']),
+      el('input', { type: 'text', placeholder: 'Mow lawn', onInput: e => form.title = e.target.value }),
+    ]),
+    el('div', { class: 'form-field' }, [
+      el('label', {}, ['Points']),
+      el('input', { type: 'number', value: form.points, min: '1', onInput: e => form.points = Number(e.target.value) }),
+    ]),
+    el('div', { class: 'form-field' }, [
+      el('label', {}, ['Anti-cheat']),
+      antiCheatSelect,
+    ]),
+    photoPromptField,
+    el('div', { class: 'form-field' }, [
+      el('label', {}, ['Description (optional)']),
+      el('textarea', { rows: 2, onInput: e => form.description = e.target.value }),
+    ]),
+    el('button', {
+      class: 'btn btn-primary',
+      onClick: async (e) => {
+        e.target.disabled = true;
+        e.target.textContent = '…';
+        try {
+          await api.post('/api/admin/bonuses', form);
+          renderBonuses(host);
+        } catch (err) {
+          alert('Post failed: ' + err.message);
+          e.target.disabled = false;
+          e.target.textContent = 'Post bonus';
+        }
+      },
+    }, ['Post bonus']),
+  ]);
+  host.appendChild(formCard);
+
+  const data = await api.get('/api/admin/bonuses');
+  host.appendChild(el('h3', { style: { marginBottom: 'var(--s3)' } }, [
+    `${data.bonuses.length} bonus${data.bonuses.length === 1 ? '' : 'es'}`,
+  ]));
+
+  if (data.bonuses.length === 0) {
+    host.appendChild(el('p', { class: 'muted' }, ['No bonuses posted.']));
+    return;
+  }
+
+  host.appendChild(el('div', { class: 'stack' },
+    data.bonuses.map(b => renderBonusRow(b, host))
+  ));
+}
+
+function renderBonusRow(b, host) {
+  const statusText = b.claimed_by
+    ? `Claimed by ${b.claimed_by_name} · ${b.assignment_status}`
+    : 'Unclaimed';
+  const statusClass = b.claimed_by
+    ? (b.assignment_status === 'done' ? 'pill-success'
+       : b.assignment_status === 'rejected' ? 'pill-danger'
+       : 'pill-info')
+    : 'pill-warn';
+
+  const actions = [];
+  if (!b.claimed_by) {
+    actions.push(el('button', {
+      class: 'btn btn-danger btn-sm',
+      onClick: async () => {
+        if (!confirm(`Cancel bonus "${b.title}"?`)) return;
+        await api.del(`/api/admin/bonuses/${b.id}`);
+        renderBonuses(host);
+      },
+    }, ['Cancel']));
+  }
+
+  return el('div', { class: 'review-row' }, [
+    el('div', { class: 'row spaced' }, [
+      el('div', {}, [
+        el('div', { style: { fontWeight: 600 } }, [b.title]),
+        el('div', { class: 'muted', style: { fontSize: '0.78rem' } }, [
+          `+${b.points} pts · ${b.anti_cheat}${b.description ? ' · ' + b.description : ''}`,
+        ]),
+      ]),
+      el('span', { class: 'pill ' + statusClass }, [statusText]),
+    ]),
+    actions.length > 0 ? el('div', { class: 'row spaced approval-actions' }, actions) : null,
+  ].filter(Boolean));
 }
