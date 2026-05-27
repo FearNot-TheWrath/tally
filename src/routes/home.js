@@ -6,6 +6,7 @@ import { calcWeekPoints, calcProjectedPay } from '../lib/points.js';
 import { savePhoto } from '../lib/photo.js';
 import { currentStreak, streakAtRisk, isOnFreeze } from '../lib/streak.js';
 import { notifyWall } from '../lib/events.js';
+import { runPayoutIfDue } from '../lib/payout.js';
 
 export function homeRoutes({ uploadsDir = './uploads' } = {}) {
   const r = Router();
@@ -16,6 +17,7 @@ export function homeRoutes({ uploadsDir = './uploads' } = {}) {
 
   r.get('/home', requireRole('kid'), (req, res) => {
     const db = req.app.get('db');
+    runPayoutIfDue(db);
     const personId = req.user.person_id;
     const person = db.prepare(`
       SELECT id, name, avatar_color, weekly_target_pts, base_pay_cents, bonus_rate_cents,
@@ -37,6 +39,10 @@ export function homeRoutes({ uploadsDir = './uploads' } = {}) {
     person.streak_days = streakDays;
     person.streak_at_risk = streakAtRisk(db, personId, warningTime, streakDays);
     person.on_freeze = isOnFreeze(db, personId);
+
+    person.transactions = db.prepare(
+      "SELECT id, type, amount_cents, note, created_at FROM transactions WHERE person_id = ? ORDER BY created_at DESC LIMIT 10"
+    ).all(personId);
 
     const assignments = db.prepare(`
       SELECT a.id, a.due_date, a.status, a.note, a.photo_path,
