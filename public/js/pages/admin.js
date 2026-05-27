@@ -84,11 +84,17 @@ async function renderToday(host) {
 async function renderPeople(host) {
   clear(host);
   const { people } = await api.get('/api/admin/people');
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const isFrozen = (p) => p.freeze_start && p.freeze_end
+    && todayIso >= p.freeze_start && todayIso <= p.freeze_end;
   const rows = people.map(p => el('div', { class: 'list-row', onClick: () => editPerson(p, host) }, [
     el('div', { class: 'row' }, [
       el('div', { class: 'av', style: { background: p.avatar_color } }, [p.name[0]]),
       el('div', {}, [
-        el('div', { style: { fontWeight: 600 } }, [p.name]),
+        el('div', { class: 'row', style: { gap: '8px', alignItems: 'center' } }, [
+          el('span', { style: { fontWeight: 600 } }, [p.name]),
+          isFrozen(p) ? el('span', { class: 'pill pill-info', style: { fontSize: '0.65rem' } }, ['On freeze']) : null,
+        ].filter(Boolean)),
         el('div', { class: 'muted', style: { fontSize: '0.78rem' } }, [`${p.role} · target ${p.weekly_target_pts}`]),
       ]),
     ]),
@@ -113,6 +119,8 @@ function editPerson(person, host) {
     ['weekly_target_pts', 'Weekly target (pts)', 'number'],
     ['base_pay_cents', 'Base pay when target is hit ($)', 'money'],
     ['bonus_rate_cents', 'Bonus per extra point ($)', 'money'],
+    ['freeze_start', 'Freeze start (sick day, vacation)', 'date'],
+    ['freeze_end', 'Freeze end', 'date'],
   ];
 
   const inputs = fields.map(([key, label, type, opts]) => {
@@ -491,15 +499,15 @@ async function renderSettings(host) {
 
   host.appendChild(el('h3', { style: { marginBottom: 'var(--s4)' } }, ['Settings']));
 
-  const stealField = el('div', { class: 'form-field' }, [
-    el('label', {}, ['Steal unlock time (24-hour local)']),
+  const timeField = (key, defaultVal, label, hint) => el('div', { class: 'form-field' }, [
+    el('label', {}, [label]),
     el('input', {
       type: 'time',
-      value: s.steal_unlock_time || '16:00',
+      value: s[key] || defaultVal,
       onChange: async (e) => {
         const value = e.target.value;
         try {
-          await api.patch('/api/admin/settings/steal_unlock_time', { value });
+          await api.patch(`/api/admin/settings/${key}`, { value });
           e.target.style.borderColor = 'var(--green)';
           setTimeout(() => { e.target.style.borderColor = ''; }, 800);
         } catch (err) {
@@ -507,12 +515,19 @@ async function renderSettings(host) {
         }
       },
     }),
-    el('div', { class: 'muted', style: { fontSize: '0.78rem', marginTop: '4px' } }, [
-      "Time of day after which kids can claim siblings' pending non-school chores.",
-    ]),
+    el('div', { class: 'muted', style: { fontSize: '0.78rem', marginTop: '4px' } }, [hint]),
   ]);
 
-  host.appendChild(stealField);
+  host.appendChild(timeField(
+    'steal_unlock_time', '16:00',
+    'Steal unlock time (24-hour local)',
+    "Time of day after which kids can claim siblings' pending non-school chores.",
+  ));
+  host.appendChild(timeField(
+    'streak_warning_time', '20:00',
+    'Streak warning time (24-hour local)',
+    'After this time, a kid with an incomplete day and an active streak sees a "Streak at risk" warning.',
+  ));
 }
 
 /* ───── Bonus Board tab ───── */
