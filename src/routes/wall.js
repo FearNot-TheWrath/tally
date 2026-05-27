@@ -2,9 +2,24 @@ import { Router } from 'express';
 import { today, weekStart } from '../lib/dates.js';
 import { calcWeekPoints } from '../lib/points.js';
 import { currentStreak, isOnFreeze } from '../lib/streak.js';
+import { wallBus } from '../lib/events.js';
 
 export function wallRoutes() {
   const r = Router();
+
+  r.get('/wall/events', (req, res) => {
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    });
+    res.write(':ok\n\n');
+
+    const onRefresh = () => res.write('event: refresh\ndata: {}\n\n');
+    wallBus.on('refresh', onRefresh);
+    res.on('close', () => wallBus.off('refresh', onRefresh));
+  });
 
   r.get('/wall', (req, res) => {
     const db = req.app.get('db');
