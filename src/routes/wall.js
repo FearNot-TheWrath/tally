@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { today, weekStart } from '../lib/dates.js';
 import { calcWeekPoints } from '../lib/points.js';
+import { currentStreak, isOnFreeze } from '../lib/streak.js';
 
 export function wallRoutes() {
   const r = Router();
@@ -38,6 +39,8 @@ export function wallRoutes() {
       kid.points = pts.points;
       kid.percent = pts.percent;
       totals.set(kid.id, pts.totalWeight);
+      kid.streak_days = currentStreak(db, kid.id);
+      kid.on_freeze = isOnFreeze(db, kid.id);
     }
     for (const a of assignmentRows) {
       const kid = kids.find(k => k.id === a.person_id);
@@ -66,7 +69,18 @@ export function wallRoutes() {
       ORDER BY c.created_at DESC
     `).all();
 
-    res.json({ kids, house_pct: housePct, today: todayIso, bonuses });
+    let streak_leader = null;
+    for (const kid of kids) {
+      if (kid.streak_days > 0) {
+        if (!streak_leader
+            || kid.streak_days > streak_leader.streak_days
+            || (kid.streak_days === streak_leader.streak_days && kid.name < streak_leader.name)) {
+          streak_leader = { name: kid.name, color: kid.avatar_color, streak_days: kid.streak_days };
+        }
+      }
+    }
+
+    res.json({ kids, house_pct: housePct, today: todayIso, bonuses, streak_leader });
   });
 
   return r;
