@@ -72,7 +72,16 @@ export function homeRoutes({ uploadsDir = './uploads' } = {}) {
 
     const todayList = assignments.filter(a => a.due_date === today());
     const overdueList = assignments.filter(a => a.due_date !== today());
-    res.json({ person, today: todayList, overdue: overdueList, stealable });
+
+    const bonuses = db.prepare(`
+      SELECT c.id, c.title, c.description, c.points, c.anti_cheat, c.photo_prompt
+      FROM chores c
+      LEFT JOIN assignments a ON a.chore_id = c.id
+      WHERE c.kind = 'bonus' AND c.deleted_at IS NULL AND a.id IS NULL
+      ORDER BY c.created_at DESC
+    `).all();
+
+    res.json({ person, today: todayList, overdue: overdueList, stealable, bonuses });
   });
 
   // Backward-compat for honor chores; /submit is preferred.
@@ -137,6 +146,27 @@ export function homeRoutes({ uploadsDir = './uploads' } = {}) {
       return res.status(409).json({ error: 'Already claimed or no longer pending' });
     }
     res.json({ ok: true });
+  });
+
+  r.post('/bonuses/:id/claim', requireRole('kid'), (req, res) => {
+    const db = req.app.get('db');
+    const kidId = req.user.person_id;
+    const chore = db.prepare(
+      "SELECT * FROM chores WHERE id = ? AND kind = 'bonus' AND deleted_at IS NULL"
+    ).get(req.params.id);
+    if (!chore) return res.status(404).json({ error: 'Not found' });
+
+    const row = db.prepare(`
+      INSERT INTO assignments (chore_id, person_id, due_date, status)
+      SELECT ?, ?, date('now', 'localtime'), 'pending'
+      WHERE NOT EXISTS (SELECT 1 FROM assignments WHERE chore_id = ?)
+      RETURNING id
+    `).get(chore.id, kidId, chore.id);
+
+    if (!row) {
+      return res.status(409).json({ error: 'Already claimed' });
+    }
+    res.json({ ok: true, assignment_id: row.id });
   });
 
   return r;

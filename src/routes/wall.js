@@ -52,7 +52,15 @@ export function wallRoutes() {
     }
     const housePct = total === 0 ? 100 : Math.round((done / total) * 100);
 
-    res.json({ kids, house_pct: housePct, today: todayIso });
+    const bonuses = db.prepare(`
+      SELECT c.id, c.title, c.points, c.anti_cheat
+      FROM chores c
+      LEFT JOIN assignments a ON a.chore_id = c.id
+      WHERE c.kind = 'bonus' AND c.deleted_at IS NULL AND a.id IS NULL
+      ORDER BY c.created_at DESC
+    `).all();
+
+    res.json({ kids, house_pct: housePct, today: todayIso, bonuses });
   });
 
   return r;
