@@ -250,3 +250,12 @@
   border-style: dashed;
   background: linear-gradient(0deg, var(--card-muted), var(--card));
 }
+
+.bonus-row {
+  border-style: dashed;
+  background: linear-gradient(0deg, #FEF3C7, var(--card));
+}
+.bonus-ico {
+  background: #FEF3C7 !important;
+  color: #92400E !important;
+}

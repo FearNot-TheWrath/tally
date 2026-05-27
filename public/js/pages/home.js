@@ -36,6 +36,40 @@ export async function renderHome(root) {
     ...data.overdue.map(a => renderTask(a, root, true)),
   ]);
 
+  const bonusBoardSection = (data.bonuses && data.bonuses.length > 0)
+    ? el('section', { class: 'stack' }, [
+        el('div', { class: 'label' }, ['Bonus board']),
+        ...data.bonuses.map(b => el('div', { class: 'txn bonus-row' }, [
+          el('div', { class: 'left' }, [
+            el('div', { class: 'ico bonus-ico' }, ['★']),
+            el('div', {}, [
+              el('div', {}, [b.title]),
+              b.description ? el('div', { class: 'muted', style: { fontSize: '0.7rem' } }, [b.description]) : null,
+            ].filter(Boolean)),
+          ]),
+          el('button', {
+            class: 'btn btn-primary btn-done',
+            onClick: async (e) => {
+              e.stopPropagation();
+              e.target.disabled = true;
+              e.target.textContent = '…';
+              try {
+                await api.post(`/api/bonuses/${b.id}/claim`);
+                renderHome(root);
+              } catch (err) {
+                if (err.status === 409) {
+                  alert('Someone beat you to it.');
+                } else {
+                  alert('Could not claim: ' + err.message);
+                }
+                renderHome(root);
+              }
+            },
+          }, [`Claim · +${b.points}`]),
+        ])),
+      ])
+    : null;
+
   const stealSection = (data.stealable && data.stealable.length > 0)
     ? el('section', { class: 'stack' }, [
         el('div', { class: 'label' }, ['Steal from a sibling']),
@@ -75,6 +109,7 @@ export async function renderHome(root) {
     hero,
     todaySection,
     overdueSection,
+    bonusBoardSection,
     stealSection,
     el('div', { class: 'row', style: { marginTop: 'var(--s5)' } }, [
       el('button', { class: 'btn btn-ghost', onClick: () => logout() }, ['Sign out']),
@@ -185,6 +220,9 @@ function renderTask(a, root, overdue = false) {
   const stolenBadge = a.stolen_from_name
     ? el('span', { class: 'pill pill-info', style: { fontSize: '0.62rem', marginLeft: '6px' } }, [`from ${a.stolen_from_name}`])
     : null;
+  const bonusBadge = a.is_bonus
+    ? el('span', { class: 'pill pill-warn', style: { fontSize: '0.62rem', marginLeft: '6px' } }, ['★ bonus'])
+    : null;
 
   return el('div', { class: classes.join(' ') }, [
     el('div', { class: 'left' }, [
@@ -192,6 +230,7 @@ function renderTask(a, root, overdue = false) {
       el('div', {}, [
         el('span', {}, [a.title]),
         stolenBadge,
+        bonusBadge,
       ].filter(Boolean)),
     ]),
     action,
