@@ -163,3 +163,6 @@ async function render() {
 
 render();
 setInterval(render, 10_000);
+
+const sse = new EventSource('/api/wall/events');
+sse.addEventListener('refresh', () => render());
