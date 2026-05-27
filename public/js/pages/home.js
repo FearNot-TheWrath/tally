@@ -1,5 +1,6 @@
 import { api } from '../lib/api.js';
 import { el, clear } from '../lib/dom.js';
+import { isMilestone, streakConfetti, milestoneConfetti } from '../lib/confetti.js';
 
 export async function renderHome(root) {
   clear(root);
@@ -29,6 +30,17 @@ export async function renderHome(root) {
       ? el('div', { class: 'streak-on-freeze', style: { marginTop: '8px' } }, ['On freeze — streak protected'])
       : null,
   ].filter(Boolean));
+
+  const STREAK_KEY = 'tally_last_streak';
+  const storedRaw = sessionStorage.getItem(STREAK_KEY);
+  if (storedRaw !== null) {
+    const lastStreak = parseInt(storedRaw, 10);
+    if (p.streak_days > lastStreak) {
+      if (isMilestone(p.streak_days)) milestoneConfetti(p.streak_days);
+      else streakConfetti();
+    }
+  }
+  sessionStorage.setItem(STREAK_KEY, String(p.streak_days));
 
   const todaySection = el('section', { class: 'stack' }, [
     el('div', { class: 'label' }, ['Today']),
