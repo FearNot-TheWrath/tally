@@ -1,8 +1,11 @@
 import { api } from '../lib/api.js';
 import { el, clear } from '../lib/dom.js';
+import { isMilestone, streakConfetti, milestoneConfetti } from '../lib/confetti.js';
 
 const root = document.getElementById('wall');
 let lastDataJson = null;
+const wallStreakCache = new Map();
+let wallFirstRender = true;
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const DAYS   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -141,6 +144,20 @@ async function render() {
   // After layout settles, turn on auto-scroll for any column whose task
   // list overflows its visible area. Duplicate the children so the marquee
   // loops seamlessly (-50% translate == one original-list height).
+  if (wallFirstRender) {
+    for (const k of data.kids) wallStreakCache.set(k.id, k.streak_days || 0);
+    wallFirstRender = false;
+  } else {
+    for (const k of data.kids) {
+      const prev = wallStreakCache.get(k.id) || 0;
+      if ((k.streak_days || 0) > prev) {
+        if (isMilestone(k.streak_days)) milestoneConfetti(k.streak_days, k.avatar_color);
+        else streakConfetti(k.avatar_color);
+      }
+      wallStreakCache.set(k.id, k.streak_days || 0);
+    }
+  }
+
   requestAnimationFrame(() => {
     for (const scrollWin of root.querySelectorAll('.tasks-scroll')) {
       const track = scrollWin.querySelector('.tasks-track');
