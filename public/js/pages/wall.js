@@ -74,7 +74,10 @@ async function render() {
       ];
       return el('div', { class: 'wall-col' }, [
         el('div', { class: 'col-head' }, [
-          el('h3', {}, [k.name]),
+          el('div', { class: 'row', style: { gap: '8px', alignItems: 'center' } }, [
+            el('h3', {}, [k.name]),
+            k.on_freeze ? el('span', { class: 'on-freeze-pill' }, ['On freeze']) : null,
+          ].filter(Boolean)),
           el('div', { class: 'av', style: { background: k.avatar_color, width: '32px', height: '32px' } }, [k.name[0]]),
         ]),
         el('div', { class: 'meta' }, [
@@ -113,12 +116,24 @@ async function render() {
       ])
     : null;
 
+  const streakLeaderBanner = data.streak_leader
+    ? el('div', { class: 'wall-streak-leader' }, [
+        el('span', { class: 'wall-streak-leader-label' }, ['Streak leader · ']),
+        el('span', {
+          class: 'wall-streak-leader-name',
+          style: { color: data.streak_leader.color },
+        }, [data.streak_leader.name]),
+        el('span', { class: 'wall-streak-leader-days' }, [` · ${data.streak_leader.streak_days} days`]),
+      ])
+    : null;
+
   root.appendChild(el('div', { class: 'wall-page' }, [
     el('div', { class: 'wall-header' }, [
       el('h2', {}, [`The Lopez House · ${fmtDate(now)}`]),
       el('span', { class: 't' }, [fmtTime(now)]),
     ]),
     banner,
+    streakLeaderBanner,
     cols,
     bonusStrip,
   ].filter(Boolean)));

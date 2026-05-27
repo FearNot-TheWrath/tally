@@ -296,3 +296,56 @@
   background: #FEF3C7;
   border: 1px dashed #FCD34D;
 }
+
+.streak-at-risk {
+  background: #FEF3C7;
+  color: #92400E;
+  padding: 6px 10px;
+  border-radius: var(--r-sm);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-align: center;
+}
+.streak-on-freeze {
+  background: #EDE9FE;
+  color: #5B21B6;
+  padding: 6px 10px;
+  border-radius: var(--r-sm);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-align: center;
+}
+.wall-streak-leader {
+  background: linear-gradient(135deg, var(--card), var(--card-muted));
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 10px 16px;
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: center;
+}
+.wall-streak-leader-label {
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 1.4px;
+  font-weight: 600;
+}
+.wall-streak-leader-name {
+  font-size: 1.15rem;
+  margin-left: 4px;
+}
+.wall-streak-leader-days {
+  font-family: var(--font-num);
+  color: var(--muted);
+  font-weight: 600;
+}
+.on-freeze-pill {
+  background: #EDE9FE;
+  color: #5B21B6;
+  font-size: 0.65rem;
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-weight: 600;
+  white-space: nowrap;
+}
