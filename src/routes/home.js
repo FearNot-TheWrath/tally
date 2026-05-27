@@ -4,6 +4,7 @@ import { requireRole, requireAnyAuth } from '../auth.js';
 import { today, weekStart } from '../lib/dates.js';
 import { calcWeekPoints, calcProjectedPay } from '../lib/points.js';
 import { savePhoto } from '../lib/photo.js';
+import { currentStreak, streakAtRisk, isOnFreeze } from '../lib/streak.js';
 
 export function homeRoutes({ uploadsDir = './uploads' } = {}) {
   const r = Router();
@@ -28,6 +29,13 @@ export function homeRoutes({ uploadsDir = './uploads' } = {}) {
     person.weighted_points = pts.weightedPoints;
     person.bonus_points_this_week = pts.bonusPoints;
     person.projected_pay_cents = calcProjectedPay(person, pts.points);
+
+    const streakDays = currentStreak(db, personId);
+    const warningRow = db.prepare("SELECT value FROM settings WHERE key='streak_warning_time'").get();
+    const warningTime = warningRow ? warningRow.value : '20:00';
+    person.streak_days = streakDays;
+    person.streak_at_risk = streakAtRisk(db, personId, warningTime, streakDays);
+    person.on_freeze = isOnFreeze(db, personId);
 
     const assignments = db.prepare(`
       SELECT a.id, a.due_date, a.status, a.note, a.photo_path,
