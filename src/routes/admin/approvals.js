@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { existsSync, statSync, createReadStream, unlinkSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { requireRole, requireAnyAuth } from '../../auth.js';
+import { notifyWall } from '../../lib/events.js';
 
 export function adminApprovalsRoutes() {
   const r = Router();
@@ -45,6 +46,7 @@ export function adminApprovalsRoutes() {
       WHERE id = ?
     `).run(req.user.person_id, points, req.params.id);
     res.json({ ok: true });
+    notifyWall();
   });
 
   r.post('/approvals/:id/reject', (req, res) => {
@@ -61,6 +63,7 @@ export function adminApprovalsRoutes() {
       WHERE id = ?
     `).run(req.body?.note || '', req.params.id);
     res.json({ ok: true });
+    notifyWall();
   });
 
   return r;

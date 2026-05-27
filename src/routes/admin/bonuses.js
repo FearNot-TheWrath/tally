@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { requireRole } from '../../auth.js';
+import { notifyWall } from '../../lib/events.js';
 
 const ALLOWED_FIELDS = [
   'title', 'description', 'points', 'anti_cheat', 'photo_prompt',
@@ -48,6 +49,7 @@ export function adminBonusesRoutes() {
       INSERT INTO chores (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')}) RETURNING *
     `).get(...vals);
     res.json({ bonus });
+    notifyWall();
   });
 
   r.patch('/bonuses/:id', (req, res) => {
@@ -78,6 +80,7 @@ export function adminBonusesRoutes() {
     `).run(req.params.id);
     if (r2.changes === 0) return res.status(404).json({ error: 'Not found' });
     res.json({ ok: true });
+    notifyWall();
   });
 
   return r;

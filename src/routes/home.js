@@ -5,6 +5,7 @@ import { today, weekStart } from '../lib/dates.js';
 import { calcWeekPoints, calcProjectedPay } from '../lib/points.js';
 import { savePhoto } from '../lib/photo.js';
 import { currentStreak, streakAtRisk, isOnFreeze } from '../lib/streak.js';
+import { notifyWall } from '../lib/events.js';
 
 export function homeRoutes({ uploadsDir = './uploads' } = {}) {
   const r = Router();
@@ -130,6 +131,7 @@ export function homeRoutes({ uploadsDir = './uploads' } = {}) {
       WHERE id = ?
     `).run(req.params.id);
     res.json({ ok: true, status: 'pending' });
+    notifyWall();
   });
 
   r.post('/assignments/:id/steal', requireRole('kid'), (req, res) => {
@@ -160,6 +162,7 @@ export function homeRoutes({ uploadsDir = './uploads' } = {}) {
       return res.status(409).json({ error: 'Already claimed or no longer pending' });
     }
     res.json({ ok: true });
+    notifyWall();
   });
 
   r.post('/bonuses/:id/claim', requireRole('kid'), (req, res) => {
@@ -181,6 +184,7 @@ export function homeRoutes({ uploadsDir = './uploads' } = {}) {
       return res.status(409).json({ error: 'Already claimed' });
     }
     res.json({ ok: true, assignment_id: row.id });
+    notifyWall();
   });
 
   return r;
@@ -217,7 +221,9 @@ function doSubmit(req, res, { honorOnly = false, uploadsDir = './uploads' } = {}
           points_earned = ?
       WHERE id = ?
     `).run(chore.points, req.params.id);
-    return res.json({ ok: true, status: 'done' });
+    res.json({ ok: true, status: 'done' });
+    notifyWall();
+    return;
   }
 
   if (chore.anti_cheat === 'approval') {
@@ -227,7 +233,9 @@ function doSubmit(req, res, { honorOnly = false, uploadsDir = './uploads' } = {}
           note = ?, updated_at = datetime('now')
       WHERE id = ?
     `).run(req.body?.note || '', req.params.id);
-    return res.json({ ok: true, status: 'submitted' });
+    res.json({ ok: true, status: 'submitted' });
+    notifyWall();
+    return;
   }
 
   // anti_cheat === 'photo'
@@ -241,6 +249,7 @@ function doSubmit(req, res, { honorOnly = false, uploadsDir = './uploads' } = {}
         WHERE id = ?
       `).run(absPath, req.body?.note || '', req.params.id);
       res.json({ ok: true, status: 'submitted' });
+      notifyWall();
     })
     .catch(err => res.status(400).json({ error: err.message }));
 }
