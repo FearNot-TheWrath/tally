@@ -84,6 +84,7 @@ async function render() {
           el('div', { class: 'av', style: { background: k.avatar_color, width: '32px', height: '32px' } }, [k.name[0]]),
         ]),
         el('div', { class: 'meta' }, [
+          el('span', { style: { color: 'var(--green)' } }, [`$${((k.bank_cents || 0) / 100).toFixed(2)}`]),
           el('span', {}, [`${k.points || 0} pts (${Math.round((k.percent || 0) * 100)}%)`]),
           el('span', {}, [`${k.streak_days || 0}d streak`]),
         ]),
