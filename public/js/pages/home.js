@@ -161,13 +161,16 @@ function renderTask(a, root, overdue = false) {
   const classes = ['txn'];
   if (a.status === 'done') classes.push('done');
   if (a.status === 'submitted') classes.push('submitted');
+  if (a.status === 'excused') classes.push('excused');
   if (overdue) classes.push('over');
 
   const ico = a.anti_cheat === 'photo' ? 'cam' : a.anti_cheat === 'approval' ? 'appr' : (a.status === 'done' ? 'done' : '');
   const icoText = a.anti_cheat === 'photo' ? 'P' : a.anti_cheat === 'approval' ? 'A' : (a.status === 'done' ? '✓' : a.title[0]);
 
   let action;
-  if (a.status === 'done') {
+  if (a.status === 'excused') {
+    action = el('span', { class: 'pill pill-info' }, ['Excused']);
+  } else if (a.status === 'done') {
     // Honor chores are reversible by tapping the row again; photo/approval are not.
     if (a.anti_cheat === 'honor') {
       action = el('button', {
@@ -271,6 +274,9 @@ function renderTask(a, root, overdue = false) {
         el('span', {}, [a.title]),
         stolenBadge,
         bonusBadge,
+        a.status === 'excused' && a.note
+          ? el('div', { class: 'muted', style: { fontSize: '0.7rem' } }, [a.note])
+          : null,
       ].filter(Boolean)),
     ]),
     action,

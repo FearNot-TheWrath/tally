@@ -379,3 +379,5 @@
   font-weight: 600;
   white-space: nowrap;
 }
+.txn.excused { opacity: 0.55; }
+.txn.excused .ico { background: #EDE9FE; color: #5B21B6; }
