@@ -3,6 +3,7 @@ tally.db
 tally.db-journal
 tally.db-shm
 tally.db-wal
+tally.db.bak-*
 uploads/
 .env
 .DS_Store
