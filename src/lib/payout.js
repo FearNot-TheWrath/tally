@@ -1,5 +1,6 @@
 import { today, toIso, fromIso, weekStart } from './dates.js';
 import { calcWeekPoints, calcProjectedPay } from './points.js';
+import { sendToPerson } from './push.js';
 
 const DAY_MAP = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
 
@@ -37,6 +38,7 @@ export function runPayoutIfDue(db) {
     ).get(ws);
     if (alreadyPaid) continue;
 
+    const paid = [];
     const deposit = db.transaction(() => {
       for (const kid of kids) {
         const existing = db.prepare(
@@ -53,10 +55,19 @@ export function runPayoutIfDue(db) {
 
         if (earned > 0) {
           db.prepare("UPDATE people SET bank_cents = bank_cents + ? WHERE id = ?").run(earned, kid.id);
+          paid.push({ personId: kid.id, earned });
         }
       }
     });
     deposit();
+
+    for (const { personId, earned } of paid) {
+      sendToPerson(db, personId, {
+        title: 'Payday!',
+        body: `$${(earned / 100).toFixed(2)} added to your bank`,
+        tag: 'payday',
+      });
+    }
   }
 }
 

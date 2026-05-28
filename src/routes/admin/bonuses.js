@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { requireRole } from '../../auth.js';
 import { notifyWall } from '../../lib/events.js';
+import { sendToPerson } from '../../lib/push.js';
 
 const ALLOWED_FIELDS = [
   'title', 'description', 'points', 'anti_cheat', 'photo_prompt',
@@ -50,6 +51,10 @@ export function adminBonusesRoutes() {
     `).get(...vals);
     res.json({ bonus });
     notifyWall();
+    const kids = db.prepare("SELECT id FROM people WHERE role = 'kid'").all();
+    for (const k of kids) {
+      sendToPerson(db, k.id, { title: 'New bonus!', body: `${bonus.title} · +${bonus.points} pts`, tag: 'bonus' });
+    }
   });
 
   r.patch('/bonuses/:id', (req, res) => {
