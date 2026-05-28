@@ -701,6 +701,18 @@ async function renderBonuses(host) {
     description: '',
     photo_prompt: '',
   };
+
+  const { people } = await api.get('/api/admin/people');
+  const kids = people.filter(p => p.role === 'kid');
+  const costLine = el('div', { class: 'muted', style: { fontSize: '0.78rem', marginTop: '4px' } }, []);
+  function updateBonusCost() {
+    const pts = Number(form.points) || 0;
+    costLine.textContent = kids.length === 0
+      ? 'No kids configured.'
+      : 'Cost if claimed:  ' + kids.map(k => `${k.name} $${(pts * (k.bonus_rate_cents || 0) / 100).toFixed(2)}`).join('   ·   ');
+  }
+  updateBonusCost();
+
   const photoPromptField = el('div', { class: 'form-field', style: { display: 'none' } }, [
     el('label', {}, ['Photo prompt (shown to the kid)']),
     el('input', { type: 'text', value: form.photo_prompt, onInput: e => form.photo_prompt = e.target.value }),
@@ -721,7 +733,8 @@ async function renderBonuses(host) {
     ]),
     el('div', { class: 'form-field' }, [
       el('label', {}, ['Points']),
-      el('input', { type: 'number', value: form.points, min: '1', onInput: e => form.points = Number(e.target.value) }),
+      el('input', { type: 'number', value: form.points, min: '1', onInput: e => { form.points = Number(e.target.value); updateBonusCost(); } }),
+      costLine,
     ]),
     el('div', { class: 'form-field' }, [
       el('label', {}, ['Anti-cheat']),
