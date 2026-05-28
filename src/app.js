@@ -14,6 +14,7 @@ import { adminSettingsRoutes } from './routes/admin/settings.js';
 import { adminBonusesRoutes } from './routes/admin/bonuses.js';
 import { adminBankRoutes } from './routes/admin/bank.js';
 import { adminAssignmentsRoutes } from './routes/admin/assignments.js';
+import { pushRoutes } from './routes/push.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -35,6 +36,7 @@ export function buildApp({ db, sessionSecret = 'dev-secret', uploadsDir = './upl
   app.use('/api', meRoute());
   app.use('/api', homeRoutes({ uploadsDir }));
   app.use('/api', wallRoutes());
+  app.use('/api', pushRoutes());
   app.use('/api', uploadsRoute());
   app.use('/api/admin', adminPeopleRoutes());
   app.use('/api/admin', adminChoresRoutes());
