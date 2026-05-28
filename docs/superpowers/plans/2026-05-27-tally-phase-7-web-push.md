@@ -20,7 +20,7 @@
 ├── server.js                                       MODIFY: startScheduler(db)
 ├── src/
 │   ├── migrations/
-│   │   └── 007-push-subscriptions.sql              NEW
+│   │   └── 008-push-subscriptions.sql              NEW
 │   ├── lib/
 │   │   ├── push.js                                 NEW: isPushConfigured, getPublicKey, saveSubscription, removeSubscription, sendToPerson
 │   │   ├── scheduler.js                            NEW: streakReminderDue, startScheduler
@@ -45,7 +45,7 @@
 ## Task 1: Migration 007 + add web-push dependency
 
 **Files:**
-- Create: `src/migrations/007-push-subscriptions.sql`
+- Create: `src/migrations/008-push-subscriptions.sql`
 - Modify: `package.json` (via npm install)
 
 - [ ] **Step 1: Create migration**
@@ -89,7 +89,7 @@ Expected: PASS — 153 tests.
 - [ ] **Step 5: Commit**
 
 ```bash
-cd ~/projects/tally && git add src/migrations/007-push-subscriptions.sql package.json package-lock.json && git commit -m "feat(schema): migration 007 push_subscriptions + web-push dep"
+cd ~/projects/tally && git add src/migrations/008-push-subscriptions.sql package.json package-lock.json && git commit -m "feat(schema): migration 008 push_subscriptions + web-push dep"
 ```
 
 ---

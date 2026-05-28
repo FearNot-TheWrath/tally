@@ -46,7 +46,7 @@ VAPID_SUBJECT=mailto:jeffrey@thelopezfamily.org
 
 ## 6. Schema
 
-### New migration: `007-push-subscriptions.sql`
+### New migration: `008-push-subscriptions.sql`
 
 ```sql
 CREATE TABLE IF NOT EXISTS push_subscriptions (
