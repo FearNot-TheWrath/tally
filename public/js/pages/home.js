@@ -1,6 +1,7 @@
 import { api } from '../lib/api.js';
 import { el, clear } from '../lib/dom.js';
 import { isMilestone, streakConfetti, milestoneConfetti } from '../lib/confetti.js';
+import { pushStatus, enablePush } from '../lib/push-client.js';
 
 export async function renderHome(root) {
   clear(root);
@@ -143,7 +144,23 @@ export async function renderHome(root) {
   root.appendChild(el('div', { class: 'page stack' }, [
     el('header', { class: 'app-header' }, [
       el('h1', {}, [`Hey ${p.name}`]),
-      el('div', { class: 'av', style: { background: p.avatar_color } }, [p.name[0]]),
+      el('div', { class: 'row', style: { gap: '8px', alignItems: 'center' } }, [
+        pushStatus() === 'default'
+          ? el('button', { class: 'btn btn-ghost btn-sm', onClick: async (e) => {
+              e.target.disabled = true;
+              e.target.textContent = '…';
+              const result = await enablePush();
+              if (result.ok) {
+                e.target.remove();
+              } else if (result.reason === 'denied') {
+                e.target.textContent = 'Reminders blocked';
+              } else {
+                e.target.remove();
+              }
+            }}, ['Turn on reminders'])
+          : null,
+        el('div', { class: 'av', style: { background: p.avatar_color } }, [p.name[0]]),
+      ].filter(Boolean)),
     ]),
     hero,
     bankSection,
