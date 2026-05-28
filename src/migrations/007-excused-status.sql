@@ -28,5 +28,7 @@ ALTER TABLE assignments_new RENAME TO assignments;
 CREATE INDEX idx_assignments_person_date ON assignments(person_id, due_date);
 CREATE INDEX idx_assignments_status ON assignments(status);
 CREATE UNIQUE INDEX idx_assignments_unique ON assignments(chore_id, person_id, due_date);
+CREATE INDEX idx_assignments_stolen_from ON assignments(stolen_from)
+  WHERE stolen_from IS NOT NULL;
 
 PRAGMA foreign_keys = ON;
