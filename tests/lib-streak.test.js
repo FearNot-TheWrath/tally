@@ -174,3 +174,31 @@ test('streakAtRisk: true when streak>0, past warning, not frozen, chores pending
   seedAssignment(db, c, kid, today(), 'pending');
   assert.equal(streakAtRisk(db, kid, '00:00', 5), true);
 });
+
+test('currentStreak: a day with one done and one excused chore qualifies', () => {
+  const db = freshDb();
+  const kid = seedKid(db);
+  const c1 = seedChore(db);
+  const c2 = seedChore(db);
+  seedAssignment(db, c1, kid, today(), 'done');
+  seedAssignment(db, c2, kid, today(), 'excused');
+  assert.equal(currentStreak(db, kid), 1);
+});
+
+test('currentStreak: a day with only an excused chore qualifies vacuously', () => {
+  const db = freshDb();
+  const kid = seedKid(db);
+  const c = seedChore(db);
+  seedAssignment(db, c, kid, daysAgo(1), 'done');
+  const c2 = seedChore(db);
+  seedAssignment(db, c2, kid, today(), 'excused');
+  assert.equal(currentStreak(db, kid), 2);
+});
+
+test('streakAtRisk: false when the only pending chore today is excused', () => {
+  const db = freshDb();
+  const kid = seedKid(db);
+  const c = seedChore(db);
+  seedAssignment(db, c, kid, today(), 'excused');
+  assert.equal(streakAtRisk(db, kid, '00:00', 5), false);
+});

@@ -72,6 +72,7 @@ export function streakAtRisk(db, personId, warningTime, currentStreakValue) {
     WHERE a.person_id = ?
       AND a.due_date = ?
       AND a.status != 'done'
+      AND a.status != 'excused'
       AND c.kind != 'bonus'
     LIMIT 1
   `).get(personId, today());
@@ -84,7 +85,7 @@ function dayQualifies(db, personId, dateIso) {
            COALESCE(SUM(CASE WHEN a.status = 'done' THEN 1 ELSE 0 END), 0) AS done
     FROM assignments a
     JOIN chores c ON c.id = a.chore_id
-    WHERE a.person_id = ? AND a.due_date = ? AND c.kind != 'bonus'
+    WHERE a.person_id = ? AND a.due_date = ? AND c.kind != 'bonus' AND a.status != 'excused'
   `).get(personId, dateIso);
   return row.total === row.done;
 }
