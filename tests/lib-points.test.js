@@ -180,3 +180,22 @@ test('calcWeekPoints bonusPoints filtered by week', () => {
   const r = calcWeekPoints(db, kid, ws);
   assert.equal(r.bonusPoints, 0, 'out-of-week done bonus excluded');
 });
+
+test('calcWeekPoints: excusing a chore removes its weight from the denominator', () => {
+  const db = freshDb();
+  const kid = db.prepare("INSERT INTO people (name, role, weekly_target_pts) VALUES ('K','kid',100) RETURNING id").get().id;
+  const c1 = db.prepare("INSERT INTO chores (title, weight, recurs, default_assignees) VALUES ('A',3,'none','') RETURNING id").get().id;
+  const c2 = db.prepare("INSERT INTO chores (title, weight, recurs, default_assignees) VALUES ('B',3,'none','') RETURNING id").get().id;
+  const ws = weekStart(today());
+  db.prepare("INSERT INTO assignments (chore_id, person_id, due_date, status) VALUES (?, ?, ?, 'done')").run(c1, kid, today());
+  const exId = db.prepare("INSERT INTO assignments (chore_id, person_id, due_date, status) VALUES (?, ?, ?, 'pending') RETURNING id").get(c2, kid, today()).id;
+
+  const before = calcWeekPoints(db, kid, ws);
+  assert.equal(before.totalWeight, 6);
+  assert.equal(before.weightedPercent, 0.5);
+
+  db.prepare("UPDATE assignments SET status = 'excused' WHERE id = ?").run(exId);
+  const after = calcWeekPoints(db, kid, ws);
+  assert.equal(after.totalWeight, 3);
+  assert.equal(after.weightedPercent, 1);
+});

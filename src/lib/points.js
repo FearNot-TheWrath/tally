@@ -36,6 +36,7 @@ export function calcWeekPoints(db, personId, weekStartIso) {
     JOIN chores c ON c.id = a.chore_id
     WHERE a.due_date BETWEEN ? AND date(?, '+6 days')
       AND c.kind != 'bonus'
+      AND a.status != 'excused'
       AND (
         (a.person_id = ? AND a.stolen_from IS NULL)
         OR a.stolen_from = ?
