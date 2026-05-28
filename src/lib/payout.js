@@ -38,8 +38,8 @@ export function runPayoutIfDue(db) {
     ).get(ws);
     if (alreadyPaid) continue;
 
-    const paid = [];
     const deposit = db.transaction(() => {
+      const result = [];
       for (const kid of kids) {
         const existing = db.prepare(
           "SELECT 1 FROM transactions WHERE person_id = ? AND type = 'deposit' AND week_start = ?"
@@ -55,11 +55,12 @@ export function runPayoutIfDue(db) {
 
         if (earned > 0) {
           db.prepare("UPDATE people SET bank_cents = bank_cents + ? WHERE id = ?").run(earned, kid.id);
-          paid.push({ personId: kid.id, earned });
+          result.push({ personId: kid.id, earned });
         }
       }
+      return result;
     });
-    deposit();
+    const paid = deposit();
 
     for (const { personId, earned } of paid) {
       sendToPerson(db, personId, {

@@ -36,7 +36,13 @@ export function removeSubscription(db, endpoint) {
 
 export async function sendToPerson(db, personId, payload) {
   if (!configured) return;
-  const subs = db.prepare('SELECT * FROM push_subscriptions WHERE person_id = ?').all(personId);
+  let subs;
+  try {
+    subs = db.prepare('SELECT * FROM push_subscriptions WHERE person_id = ?').all(personId);
+  } catch (err) {
+    console.error('push lookup failed:', err.message);
+    return;
+  }
   for (const sub of subs) {
     try {
       await webpush.sendNotification(
