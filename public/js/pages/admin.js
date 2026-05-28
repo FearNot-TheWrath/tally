@@ -68,22 +68,46 @@ async function renderToday(host) {
   host.appendChild(el('div', { class: 'stack', style: { marginTop: 'var(--s4)' } },
     d.kids.map(k => {
       const detail = el('div', { class: 'stack', style: { display: 'none', marginTop: '8px', gap: '4px' } },
-        (k.assignments || []).map(a => el('div', {
-          style: {
-            fontSize: '0.82rem',
-            padding: '4px 8px',
-            borderRadius: 'var(--r-sm)',
-            background: a.status === 'done' ? 'var(--card-muted)' : 'transparent',
-            color: a.status === 'done' ? 'var(--muted)' : 'var(--ink)',
-            textDecoration: a.status === 'done' ? 'line-through' : 'none',
-            display: 'flex', justifyContent: 'space-between',
-          },
-        }, [
-          el('span', {}, [a.title]),
-          el('span', { style: { fontSize: '0.72rem', color: 'var(--muted)' } }, [
-            a.due_date !== d.today ? 'overdue' : a.status,
-          ]),
-        ]))
+        (k.assignments || []).map(a => {
+          const right = a.status === 'excused'
+            ? el('span', { class: 'row', style: { gap: '8px', alignItems: 'center' } }, [
+                el('span', { style: { fontSize: '0.72rem', color: '#5B21B6' } }, [`Excused: ${a.note || ''}`]),
+                el('button', { class: 'btn btn-ghost btn-sm', onClick: async (e) => {
+                  e.stopPropagation();
+                  try { await api.post(`/api/admin/assignments/${a.id}/unexcuse`, {}); renderToday(host); }
+                  catch (err) { alert(err.message); }
+                }}, ['Undo']),
+              ])
+            : el('span', { class: 'row', style: { gap: '8px', alignItems: 'center' } }, [
+                el('span', { style: { fontSize: '0.72rem', color: 'var(--muted)' } }, [
+                  a.due_date !== d.today ? 'overdue' : a.status,
+                ]),
+                a.status !== 'done'
+                  ? el('button', { class: 'btn btn-ghost btn-sm', onClick: async (e) => {
+                      e.stopPropagation();
+                      const reason = prompt(`Why is "${a.title}" excused?`, '');
+                      if (reason === null) return;
+                      try { await api.post(`/api/admin/assignments/${a.id}/excuse`, { note: reason }); renderToday(host); }
+                      catch (err) { alert(err.message); }
+                    }}, ['Excuse'])
+                  : null,
+              ].filter(Boolean));
+          return el('div', {
+            style: {
+              fontSize: '0.82rem',
+              padding: '4px 8px',
+              borderRadius: 'var(--r-sm)',
+              background: a.status === 'done' ? 'var(--card-muted)' : 'transparent',
+              color: a.status === 'done' ? 'var(--muted)' : 'var(--ink)',
+              textDecoration: a.status === 'done' ? 'line-through' : 'none',
+              opacity: a.status === 'excused' ? 0.7 : 1,
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            },
+          }, [
+            el('span', {}, [a.title]),
+            right,
+          ]);
+        })
       );
       return el('div', { class: 'list-row', style: { cursor: 'pointer', display: 'block' }, onClick: () => {
         detail.style.display = detail.style.display === 'none' ? 'flex' : 'none';
