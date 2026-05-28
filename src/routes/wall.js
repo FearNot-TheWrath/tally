@@ -42,7 +42,7 @@ export function wallRoutes() {
       JOIN chores c ON c.id = a.chore_id
       LEFT JOIN people sf ON sf.id = a.stolen_from
       WHERE a.person_id IN (${kidIds.map(() => '?').join(',')})
-        AND (a.due_date = ? OR (a.due_date < ? AND a.status NOT IN ('done','expired','rejected')))
+        AND (a.due_date = ? OR (a.due_date < ? AND a.status NOT IN ('done','expired','rejected','excused')))
       ORDER BY a.due_date, c.title
     `).all(...kidIds, todayIso, todayIso);
 
@@ -73,8 +73,10 @@ export function wallRoutes() {
       }
       const bucket = a.due_date === todayIso ? kid.today : kid.overdue;
       bucket.push(a);
-      total++;
-      if (a.status === 'done') done++;
+      if (a.status !== 'excused') {
+        total++;
+        if (a.status === 'done') done++;
+      }
     }
     const housePct = total === 0 ? 100 : Math.round((done / total) * 100);
 

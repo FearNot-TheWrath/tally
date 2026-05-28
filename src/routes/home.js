@@ -53,7 +53,7 @@ export function homeRoutes({ uploadsDir = './uploads' } = {}) {
       JOIN chores c ON c.id = a.chore_id
       LEFT JOIN people sf ON sf.id = a.stolen_from
       WHERE a.person_id = ?
-        AND (a.due_date = ? OR (a.due_date < ? AND a.status NOT IN ('done','expired','rejected')))
+        AND (a.due_date = ? OR (a.due_date < ? AND a.status NOT IN ('done','expired','rejected','excused')))
       ORDER BY a.due_date, c.title
     `).all(personId, today(), today());
 
