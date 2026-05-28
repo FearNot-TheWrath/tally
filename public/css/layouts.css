@@ -381,3 +381,4 @@
 }
 .txn.excused { opacity: 0.55; }
 .txn.excused .ico { background: #EDE9FE; color: #5B21B6; }
+.wall-col .task.excused { opacity: 0.5; text-decoration: line-through; }

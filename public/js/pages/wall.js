@@ -63,7 +63,7 @@ async function render() {
     ]),
     el('div', { class: 'wall-stats' },
       data.kids.map(k => el('div', {}, [
-        el('div', { class: 'st-num' }, [`${k.today.filter(t => t.status === 'done').length}/${k.today.length}`]),
+        el('div', { class: 'st-num' }, [`${k.today.filter(t => t.status === 'done').length}/${k.today.filter(t => t.status !== 'excused').length}`]),
         el('div', { class: 'st-name' }, [k.name]),
       ]))
     ),
@@ -93,12 +93,13 @@ async function render() {
             tasks.length === 0
               ? [el('p', { class: 'muted', style: { fontSize: '0.85rem' } }, ['All clear.'])]
               : tasks.map(t => el('div', {
-                  class: 'task' + (t.status === 'done' ? ' done' : '') + (t.over ? ' over' : '') + (t.is_bonus ? ' bonus' : ''),
+                  class: 'task' + (t.status === 'done' ? ' done' : '') + (t.over ? ' over' : '') + (t.is_bonus ? ' bonus' : '') + (t.status === 'excused' ? ' excused' : ''),
                 }, [
                   el('div', {}, [
                     el('span', {}, [t.title]),
                     t.is_bonus ? el('span', { style: { fontSize: '0.62rem', color: '#92400E', marginLeft: '6px' } }, ['★']) : null,
                     t.stolen_from_name ? el('span', { style: { fontSize: '0.62rem', color: 'var(--muted)', marginLeft: '6px' } }, [`(from ${t.stolen_from_name})`]) : null,
+                    t.status === 'excused' ? el('span', { style: { fontSize: '0.62rem', color: '#5B21B6', marginLeft: '6px' } }, ['· Excused']) : null,
                   ].filter(Boolean)),
                   el('span', { class: 'p' }, [`+${t.display_points || 0}`]),
                 ]))
