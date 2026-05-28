@@ -3,6 +3,7 @@ import { openDb } from './src/db.js';
 import { buildApp } from './src/app.js';
 import { generateForToday } from './src/lib/assignments.js';
 import { purgeOldPhotos } from './src/lib/retention.js';
+import { startScheduler } from './src/lib/scheduler.js';
 
 const PORT = process.env.PORT || 3007;
 const SECRET = process.env.SESSION_SECRET || 'dev-secret-change-me';
@@ -19,6 +20,8 @@ setInterval(() => {
   try { generateForToday(db); }
   catch (e) { console.error('generator failed:', e); }
 }, 60 * 60 * 1000);
+
+startScheduler(db);
 
 // Daily retention sweep: delete photos older than PHOTO_RETENTION_DAYS days.
 try {
