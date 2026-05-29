@@ -245,36 +245,51 @@ function renderTask(a, root, overdue = false) {
       },
     }, [`Submit · +${a.display_points}`]);
   } else if (a.anti_cheat === 'photo') {
-    action = el('label', { class: 'btn btn-primary btn-done photo-btn' }, [
-      `Photo · +${a.display_points}`,
+    const files = [];
+    const thumbs = el('div', { class: 'row', style: { gap: '6px', flexWrap: 'wrap' } }, []);
+    const submitBtn = el('button', { class: 'btn btn-primary btn-done' }, [`Submit · +${a.display_points}`]);
+    const addBtn = el('label', { class: 'btn btn-ghost btn-sm photo-btn' }, [
+      'Add photo',
       el('input', {
         type: 'file', accept: 'image/*', capture: 'environment',
         style: { display: 'none' },
-        onChange: async (e) => {
-          const file = e.target.files[0];
-          if (!file) return;
-          const btn = e.target.parentElement;
-          btn.classList.add('btn-loading');
-          btn.firstChild.nodeValue = 'Uploading…';
-          const fd = new FormData();
-          fd.append('photo', file);
-          try {
-            const res = await fetch(`/api/assignments/${a.id}/submit`, {
-              method: 'POST', credentials: 'same-origin', body: fd,
-            });
-            if (!res.ok) {
-              const data = await res.json().catch(() => ({}));
-              throw new Error(data.error || res.statusText);
-            }
-            renderHome(root);
-          } catch (err) {
-            alert('Upload failed: ' + err.message);
-            btn.classList.remove('btn-loading');
-            btn.firstChild.nodeValue = `Photo · +${a.display_points}`;
-          }
+        onChange: (e) => {
+          const f = e.target.files[0];
+          e.target.value = '';
+          if (!f || files.length >= 3) return;
+          files.push(f);
+          thumbs.appendChild(el('img', {
+            src: URL.createObjectURL(f),
+            style: { width: '40px', height: '40px', objectFit: 'cover', borderRadius: 'var(--r-sm)' },
+          }));
+          sync();
         },
       }),
     ]);
+    function sync() {
+      submitBtn.disabled = files.length === 0;
+      addBtn.style.display = files.length >= 3 ? 'none' : '';
+    }
+    submitBtn.onclick = async () => {
+      if (files.length === 0) return;
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Uploading…';
+      const fd = new FormData();
+      for (const f of files) fd.append('photo', f);
+      try {
+        const res = await fetch(`/api/assignments/${a.id}/submit`, {
+          method: 'POST', credentials: 'same-origin', body: fd,
+        });
+        if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || res.statusText); }
+        renderHome(root);
+      } catch (err) {
+        alert('Upload failed: ' + err.message);
+        submitBtn.disabled = false;
+        submitBtn.textContent = `Submit · +${a.display_points}`;
+      }
+    };
+    sync();
+    action = el('div', { class: 'row', style: { gap: '6px', alignItems: 'center', flexWrap: 'wrap' } }, [thumbs, addBtn, submitBtn]);
   }
 
   const stolenBadge = a.stolen_from_name
