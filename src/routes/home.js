@@ -193,6 +193,24 @@ export function homeRoutes({ uploadsDir = './uploads' } = {}) {
     notifyWall();
   });
 
+  r.post('/assignments/:id/unclaim', requireRole('kid'), (req, res) => {
+    const db = req.app.get('db');
+    const kidId = req.user.person_id;
+    const a = db.prepare(`
+      SELECT a.id, a.person_id, a.status, c.kind
+      FROM assignments a
+      JOIN chores c ON c.id = a.chore_id
+      WHERE a.id = ?
+    `).get(req.params.id);
+    if (!a) return res.status(404).json({ error: 'Not found' });
+    if (a.person_id !== kidId) return res.status(403).json({ error: 'Not your bonus' });
+    if (a.kind !== 'bonus') return res.status(409).json({ error: 'Only bonus chores can be given back' });
+    if (a.status !== 'pending') return res.status(409).json({ error: 'Can only give back a bonus before starting it' });
+    db.prepare('DELETE FROM assignments WHERE id = ?').run(req.params.id);
+    res.json({ ok: true });
+    notifyWall();
+  });
+
   return r;
 }
 

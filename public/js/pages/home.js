@@ -284,6 +284,24 @@ function renderTask(a, root, overdue = false) {
     ? el('span', { class: 'pill pill-warn', style: { fontSize: '0.62rem', marginLeft: '6px' } }, ['★ bonus'])
     : null;
 
+  const giveBack = (a.is_bonus && a.status === 'pending')
+    ? el('button', {
+        class: 'btn btn-ghost btn-undo',
+        title: 'Give this bonus back so someone else can claim it',
+        onClick: async (e) => {
+          e.stopPropagation();
+          e.target.disabled = true;
+          try {
+            await api.post(`/api/assignments/${a.id}/unclaim`);
+            renderHome(root);
+          } catch (err) {
+            alert('Could not give back: ' + err.message);
+            e.target.disabled = false;
+          }
+        },
+      }, ['Give back'])
+    : null;
+
   return el('div', { class: classes.join(' ') }, [
     el('div', { class: 'left' }, [
       el('div', { class: `ico ${ico}` }, [icoText]),
@@ -296,7 +314,7 @@ function renderTask(a, root, overdue = false) {
           : null,
       ].filter(Boolean)),
     ]),
-    action,
+    giveBack ? el('div', { class: 'row', style: { gap: '6px' } }, [giveBack, action]) : action,
   ]);
 }
 

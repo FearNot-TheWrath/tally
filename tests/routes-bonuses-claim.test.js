@@ -120,3 +120,61 @@ test('claimed bonus appears in kid Today list with is_bonus=1 and chore.points a
   assert.equal(row.is_bonus, 1);
   assert.equal(row.display_points, 30);
 });
+
+test('unclaim releases a pending bonus back to the board', async () => {
+  const db = freshDb();
+  const kid = seedKid(db, 'K');
+  const bonusId = seedBonus(db, 'Mow', 30);
+  const app = freshApp(db);
+  const agent = await loginKid(app, kid);
+  const claim = await agent.post(`/api/bonuses/${bonusId}/claim`);
+  const assignmentId = claim.body.assignment_id;
+
+  const res = await agent.post(`/api/assignments/${assignmentId}/unclaim`);
+  assert.equal(res.status, 200);
+  // assignment is gone
+  assert.equal(db.prepare('SELECT * FROM assignments WHERE id = ?').get(assignmentId), undefined);
+  // bonus is back up for grabs
+  const home = await agent.get('/api/home');
+  assert.equal(home.body.bonuses.length, 1);
+  assert.equal(home.body.bonuses[0].title, 'Mow');
+});
+
+test('unclaim rejects another kid\'s claim with 403', async () => {
+  const db = freshDb();
+  const owner = seedKid(db, 'Owner');
+  const other = seedKid(db, 'Other');
+  const bonusId = seedBonus(db);
+  const app = freshApp(db);
+  const ownerAgent = await loginKid(app, owner);
+  const claim = await ownerAgent.post(`/api/bonuses/${bonusId}/claim`);
+
+  const otherAgent = await loginKid(app, other);
+  const res = await otherAgent.post(`/api/assignments/${claim.body.assignment_id}/unclaim`);
+  assert.equal(res.status, 403);
+  assert.ok(db.prepare('SELECT * FROM assignments WHERE id = ?').get(claim.body.assignment_id));
+});
+
+test('unclaim returns 409 once the bonus has been acted on', async () => {
+  const db = freshDb();
+  const kid = seedKid(db, 'K');
+  const bonusId = seedBonus(db, 'Mow', 30, 'honor');
+  const app = freshApp(db);
+  const agent = await loginKid(app, kid);
+  const claim = await agent.post(`/api/bonuses/${bonusId}/claim`);
+  await agent.post(`/api/assignments/${claim.body.assignment_id}/submit`); // mark honor done
+
+  const res = await agent.post(`/api/assignments/${claim.body.assignment_id}/unclaim`);
+  assert.equal(res.status, 409);
+});
+
+test('unclaim returns 409 for a regular (non-bonus) assignment', async () => {
+  const db = freshDb();
+  const kid = seedKid(db, 'K');
+  const cId = db.prepare("INSERT INTO chores (title, points, kind, recurs, default_assignees) VALUES ('Reg', 5, 'recurring', 'daily', '') RETURNING id").get().id;
+  const aId = db.prepare("INSERT INTO assignments (chore_id, person_id, due_date, status) VALUES (?, ?, date('now','localtime'), 'pending') RETURNING id").get(cId, kid).id;
+  const app = freshApp(db);
+  const agent = await loginKid(app, kid);
+  const res = await agent.post(`/api/assignments/${aId}/unclaim`);
+  assert.equal(res.status, 409);
+});
