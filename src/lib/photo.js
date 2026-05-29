@@ -5,7 +5,7 @@ import sharp from 'sharp';
 const MAX_WIDTH = 1600;
 const JPEG_QUALITY = 82;
 
-export async function savePhoto(buffer, assignmentId, rootDir = './uploads') {
+export async function savePhoto(buffer, assignmentId, rootDir = './uploads', slot = 1) {
   let processed;
   try {
     processed = await sharp(buffer)
@@ -23,7 +23,7 @@ export async function savePhoto(buffer, assignmentId, rootDir = './uploads') {
   const dir = join(rootDir, `${yyyy}-${mm}`);
   mkdirSync(dir, { recursive: true });
 
-  const path = join(dir, `${assignmentId}.jpg`);
+  const path = join(dir, `${assignmentId}-${slot}.jpg`);
   writeFileSync(path, processed);
   return path;
 }

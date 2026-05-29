@@ -19,10 +19,10 @@ test('savePhoto writes a resized JPEG to uploads/YYYY-MM/<id>.jpg and strips EXI
   const root = mkdtempSync(join(tmpdir(), 'tally-photos-'));
   try {
     const buf = await makeJpeg();
-    const path = await savePhoto(buf, 42, root);
+    const path = await savePhoto(buf, 42, root, 1);
 
     assert.ok(existsSync(path), 'file should be on disk');
-    assert.match(path, /\d{4}-\d{2}\/42\.jpg$/);
+    assert.match(path, /\d{4}-\d{2}\/42-1\.jpg$/);
 
     const meta = await sharp(path).metadata();
     assert.ok(meta.width <= 1600, 'should be resized to <= 1600 wide');
