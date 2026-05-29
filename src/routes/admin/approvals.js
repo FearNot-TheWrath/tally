@@ -86,9 +86,10 @@ export function uploadsRoute() {
     const uploadsDir = req.app.get('uploadsDir') || './uploads';
     const { yearMonth, file } = req.params;
     if (!/^\d{4}-\d{2}$/.test(yearMonth)) return res.status(400).json({ error: 'bad path' });
-    if (!/^\d+\.jpg$/.test(file)) return res.status(400).json({ error: 'bad path' });
+    // Filenames are `${assignmentId}.jpg` (legacy) or `${assignmentId}-${slot}.jpg` (multi-photo).
+    if (!/^\d+(-\d+)?\.jpg$/.test(file)) return res.status(400).json({ error: 'bad path' });
 
-    const assignmentId = Number(file.replace('.jpg', ''));
+    const assignmentId = Number(file.replace('.jpg', '').split('-')[0]);
     const row = db.prepare('SELECT person_id FROM assignments WHERE id = ?').get(assignmentId);
     if (!row) return res.status(404).json({ error: 'Not found' });
 

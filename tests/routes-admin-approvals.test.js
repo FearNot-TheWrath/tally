@@ -166,3 +166,36 @@ test('photo serving requires auth (parent or owning kid); strangers get 401/403'
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+test('photo serving handles multi-photo slot filenames (id-slot.jpg)', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'tally-served-'));
+  try {
+    const aId = 77;
+    const now = new Date();
+    const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    mkdirSync(join(root, ym), { recursive: true });
+    const filePath = join(root, ym, `${aId}-2.jpg`);
+    writeFileSync(filePath, Buffer.from([0xff, 0xd8, 0xff]));
+
+    const db = freshDb();
+    const owner = db.prepare("INSERT INTO people (name, role) VALUES ('K','kid') RETURNING id").get().id;
+    const cId = db.prepare("INSERT INTO chores (title, points, default_assignees, anti_cheat) VALUES ('X',5,?,'photo') RETURNING id").get(String(owner)).id;
+    db.prepare("INSERT INTO assignments (id, chore_id, person_id, due_date, status) VALUES (?, ?, ?, date('now','localtime'), 'submitted')").run(aId, cId, owner);
+    db.prepare("INSERT INTO assignment_photos (assignment_id, path) VALUES (?, ?)").run(aId, filePath);
+    const app = freshApp(db, { uploadsDir: root });
+
+    const { agent: parentAgent } = await asParent(app, db);
+    const res = await parentAgent.get(`/api/uploads/${ym}/${aId}-2.jpg`);
+    assert.equal(res.status, 200);
+    assert.equal(res.headers['content-type'], 'image/jpeg');
+
+    // a stranger is still rejected for a slotted file
+    const other = db.prepare("INSERT INTO people (name, role) VALUES ('K2','kid') RETURNING id").get().id;
+    const otherAgent = request.agent(app);
+    await otherAgent.post('/api/auth/login').send({ person_id: other });
+    const r2 = await otherAgent.get(`/api/uploads/${ym}/${aId}-2.jpg`);
+    assert.equal(r2.status, 403);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
