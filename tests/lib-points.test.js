@@ -11,7 +11,7 @@ function seedKid(db, name = 'K', target = 100) {
 }
 function seedChore(db, weight, isSchool = 0) {
   return db.prepare(
-    "INSERT INTO chores (title, weight, is_school_work, recurs) VALUES ('T', ?, ?, 'daily') RETURNING id"
+    "INSERT INTO chores (title, weight, unstealable, recurs) VALUES ('T', ?, ?, 'daily') RETURNING id"
   ).get(weight, isSchool).id;
 }
 function seedAssignment(db, choreId, kidId, dueDate, status = 'pending', extras = {}) {

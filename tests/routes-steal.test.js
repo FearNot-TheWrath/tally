@@ -17,7 +17,7 @@ function seedKid(db, name) {
   return db.prepare("INSERT INTO people (name, role, weekly_target_pts) VALUES (?, 'kid', 100) RETURNING id").get(name).id;
 }
 function seedChore(db, title, weight = 3, isSchool = 0) {
-  return db.prepare("INSERT INTO chores (title, weight, is_school_work, recurs) VALUES (?, ?, ?, 'daily') RETURNING id").get(title, weight, isSchool).id;
+  return db.prepare("INSERT INTO chores (title, weight, unstealable, recurs) VALUES (?, ?, ?, 'daily') RETURNING id").get(title, weight, isSchool).id;
 }
 function seedAssignment(db, choreId, kidId, status = 'pending') {
   return db.prepare("INSERT INTO assignments (chore_id, person_id, due_date, status) VALUES (?, ?, date('now', 'localtime'), ?) RETURNING id").get(choreId, kidId, status).id;
@@ -28,7 +28,7 @@ async function loginKid(app, id) {
   return agent;
 }
 
-test('POST /api/assignments/:id/steal succeeds after unlock time on non-school pending chore', async () => {
+test('POST /api/assignments/:id/steal succeeds after unlock time on stealable pending chore', async () => {
   const db = freshDb();
   setUnlockMinutesAgo(db, 60);
   const owner = seedKid(db, 'Owner');
@@ -59,7 +59,7 @@ test('steal returns 400 before unlock time', async () => {
   assert.match(res.body.error, /not unlocked|too early|unlock/i);
 });
 
-test('steal returns 400 for school work', async () => {
+test('steal returns 400 for unstealable chore', async () => {
   const db = freshDb();
   setUnlockMinutesAgo(db, 60);
   const owner = seedKid(db, 'Owner');
@@ -70,7 +70,7 @@ test('steal returns 400 for school work', async () => {
   const agent = await loginKid(app, stealer);
   const res = await agent.post(`/api/assignments/${aId}/steal`);
   assert.equal(res.status, 400);
-  assert.match(res.body.error, /school/i);
+  assert.match(res.body.error, /cannot be stolen/i);
 });
 
 test('steal returns 400 if assignment is not pending', async () => {

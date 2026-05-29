@@ -83,7 +83,7 @@ export function homeRoutes({ uploadsDir = './uploads' } = {}) {
         AND a.status = 'pending'
         AND a.person_id != ?
         AND p.role = 'kid'
-        AND c.is_school_work = 0
+        AND c.unstealable = 0
       ORDER BY p.name, c.title
     `).all(today(), personId) : [];
     for (const s of stealable) {
@@ -145,14 +145,14 @@ export function homeRoutes({ uploadsDir = './uploads' } = {}) {
     const db = req.app.get('db');
     const stealerId = req.user.person_id;
     const a = db.prepare(`
-      SELECT a.*, c.is_school_work
+      SELECT a.*, c.unstealable
       FROM assignments a
       JOIN chores c ON c.id = a.chore_id
       WHERE a.id = ?
     `).get(req.params.id);
     if (!a) return res.status(404).json({ error: 'Not found' });
     if (a.person_id === stealerId) return res.status(403).json({ error: 'Cannot steal from yourself' });
-    if (a.is_school_work) return res.status(400).json({ error: 'School work cannot be stolen' });
+    if (a.unstealable) return res.status(400).json({ error: 'This chore cannot be stolen' });
     if (a.status !== 'pending') return res.status(400).json({ error: 'Only pending chores can be stolen' });
     if (a.due_date !== today()) return res.status(400).json({ error: "Only today's chores can be stolen" });
     if (!isUnlocked(db)) return res.status(400).json({ error: 'Stealing is not yet unlocked today' });

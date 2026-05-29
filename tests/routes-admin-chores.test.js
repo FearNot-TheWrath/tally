@@ -71,19 +71,19 @@ test('deleting a chore removes its pending assignments but keeps done ones as hi
   assert.ok(remaining.length >= 1, 'at least one done assignment kept as history');
 });
 
-test('chore POST/PATCH accepts weight (1-5) and is_school_work', async () => {
+test('chore POST/PATCH accepts weight (1-5) and unstealable', async () => {
   const db = freshDb();
   const app = freshApp(db);
   const agent = await asParent(app, db);
 
   const c = await agent.post('/api/admin/chores').send({
-    title: 'Mow', weight: 5, is_school_work: 0, recurs: 'weekly', anti_cheat: 'honor',
+    title: 'Mow', weight: 5, unstealable: 0, recurs: 'weekly', anti_cheat: 'honor',
   });
   assert.equal(c.status, 200);
   assert.equal(c.body.chore.weight, 5);
-  assert.equal(c.body.chore.is_school_work, 0);
+  assert.equal(c.body.chore.unstealable, 0);
 
-  const p = await agent.patch(`/api/admin/chores/${c.body.chore.id}`).send({ is_school_work: 1, weight: 2 });
+  const p = await agent.patch(`/api/admin/chores/${c.body.chore.id}`).send({ unstealable: 1, weight: 2 });
   assert.equal(p.body.chore.weight, 2);
-  assert.equal(p.body.chore.is_school_work, 1);
+  assert.equal(p.body.chore.unstealable, 1);
 });

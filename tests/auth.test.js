@@ -29,12 +29,12 @@ test('seed migration sets default admin PIN', () => {
   assert.ok(row.value.length > 0);
 });
 
-test('migration 004 adds weight, is_school_work, stolen_from, steal_unlock_time', () => {
+test('migration 004+ adds weight, unstealable, stolen_from, steal_unlock_time', () => {
   const db = freshDb();
 
   const choreCols = db.prepare('PRAGMA table_info(chores)').all().map(c => c.name);
   assert.ok(choreCols.includes('weight'), 'chores.weight should exist');
-  assert.ok(choreCols.includes('is_school_work'), 'chores.is_school_work should exist');
+  assert.ok(choreCols.includes('unstealable'), 'chores.unstealable should exist');
 
   const assignmentCols = db.prepare('PRAGMA table_info(assignments)').all().map(c => c.name);
   assert.ok(assignmentCols.includes('stolen_from'), 'assignments.stolen_from should exist');
