@@ -37,7 +37,8 @@ function makeFakeJpeg(root, assignmentId) {
 test('GET /api/admin/approvals returns submitted assignments with kid + chore + photo info', async () => {
   const db = freshDb();
   const kid = db.prepare("INSERT INTO people (name, role) VALUES ('K','kid') RETURNING id").get().id;
-  seedSubmitted(db, kid, { photoPath: '/some/where/42.jpg' });
+  const aId = seedSubmitted(db, kid);
+  db.prepare("INSERT INTO assignment_photos (assignment_id, path) VALUES (?, ?)").run(aId, '/some/where/uploads/2026-05/42-1.jpg');
   const app = freshApp(db);
   const { agent } = await asParent(app, db);
   const res = await agent.get('/api/admin/approvals');
@@ -45,7 +46,7 @@ test('GET /api/admin/approvals returns submitted assignments with kid + chore + 
   assert.equal(res.body.approvals.length, 1);
   assert.equal(res.body.approvals[0].kid_name, 'K');
   assert.equal(res.body.approvals[0].chore_title, 'T');
-  assert.ok(res.body.approvals[0].photo_url);
+  assert.equal(res.body.approvals[0].photos.length, 1);
 });
 
 test('approve sets status=done, points_earned, approved_at, approved_by AND deletes photo file', async () => {
@@ -55,7 +56,7 @@ test('approve sets status=done, points_earned, approved_at, approved_by AND dele
     const kid = db.prepare("INSERT INTO people (name, role) VALUES ('K','kid') RETURNING id").get().id;
     const aId = seedSubmitted(db, kid);
     const filePath = makeFakeJpeg(root, aId);
-    db.prepare('UPDATE assignments SET photo_path = ? WHERE id = ?').run(filePath, aId);
+    db.prepare("INSERT INTO assignment_photos (assignment_id, path) VALUES (?, ?)").run(aId, filePath);
     assert.ok(existsSync(filePath), 'photo file exists before approve');
 
     const app = freshApp(db, { uploadsDir: root });
@@ -68,7 +69,7 @@ test('approve sets status=done, points_earned, approved_at, approved_by AND dele
     assert.equal(row.points_earned, 5);
     assert.equal(row.approved_by, parentId);
     assert.ok(row.approved_at);
-    assert.equal(row.photo_path, null, 'photo_path nulled');
+    assert.equal(db.prepare('SELECT COUNT(*) c FROM assignment_photos WHERE assignment_id = ?').get(aId).c, 0);
     assert.equal(existsSync(filePath), false, 'photo file deleted from disk');
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -93,7 +94,7 @@ test('reject sets status=pending, stores note, AND deletes photo file', async ()
     const kid = db.prepare("INSERT INTO people (name, role) VALUES ('K','kid') RETURNING id").get().id;
     const aId = seedSubmitted(db, kid);
     const filePath = makeFakeJpeg(root, aId);
-    db.prepare('UPDATE assignments SET photo_path = ? WHERE id = ?').run(filePath, aId);
+    db.prepare("INSERT INTO assignment_photos (assignment_id, path) VALUES (?, ?)").run(aId, filePath);
 
     const app = freshApp(db, { uploadsDir: root });
     const { agent } = await asParent(app, db);
@@ -103,7 +104,7 @@ test('reject sets status=pending, stores note, AND deletes photo file', async ()
     const row = db.prepare('SELECT * FROM assignments WHERE id = ?').get(aId);
     assert.equal(row.status, 'pending');
     assert.equal(row.note, 'still messy');
-    assert.equal(row.photo_path, null, 'photo_path nulled');
+    assert.equal(db.prepare('SELECT COUNT(*) c FROM assignment_photos WHERE assignment_id = ?').get(aId).c, 0);
     assert.equal(existsSync(filePath), false, 'photo file deleted from disk');
   } finally {
     rmSync(root, { recursive: true, force: true });

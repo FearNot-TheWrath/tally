@@ -42,7 +42,8 @@ test('GET /api/admin/day-review?date=... returns photo+approval chores for that 
   const cHonor = seedChore(db, 'Bed', 'honor', kid);
 
   // Today: photo submitted, approval done, honor done
-  seedAssignment(db, cPhoto, kid, '2026-05-26', 'submitted', { photo_path: '/some/path/1.jpg', submitted_at: '2026-05-26 10:00:00' });
+  const vacuumId = seedAssignment(db, cPhoto, kid, '2026-05-26', 'submitted', { submitted_at: '2026-05-26 10:00:00' });
+  db.prepare("INSERT INTO assignment_photos (assignment_id, path) VALUES (?, ?)").run(vacuumId, '/some/path/uploads/2026-05/1.jpg');
   seedAssignment(db, cApproval, kid, '2026-05-26', 'done', { approved_at: '2026-05-26 11:00:00' });
   seedAssignment(db, cHonor, kid, '2026-05-26', 'done');
 
@@ -59,15 +60,15 @@ test('GET /api/admin/day-review?date=... returns photo+approval chores for that 
   const titles = res.body.items.map(i => i.chore_title).sort();
   assert.deepEqual(titles, ['Reading', 'Vacuum']);
 
-  // photo submitted item should have photo_url
+  // photo submitted item should have photos array
   const vacuum = res.body.items.find(i => i.chore_title === 'Vacuum');
   assert.equal(vacuum.status, 'submitted');
-  assert.ok(vacuum.photo_url);
+  assert.equal(vacuum.photos.length, 1);
 
-  // approval done item should have approver info, no photo_url
+  // approval done item should have approver info, no photos
   const reading = res.body.items.find(i => i.chore_title === 'Reading');
   assert.equal(reading.status, 'done');
-  assert.equal(reading.photo_url, null);
+  assert.equal(reading.photos.length, 0);
 });
 
 test('day-review without ?date defaults to today', async () => {

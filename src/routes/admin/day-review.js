@@ -30,7 +30,8 @@ export function adminDayReviewRoutes() {
 
     const items = rows.map(row => ({
       ...row,
-      photo_url: row.photo_path ? `/api/uploads/${relFromUploads(row.photo_path)}` : null,
+      photos: db.prepare('SELECT path FROM assignment_photos WHERE assignment_id = ? ORDER BY id').all(row.id)
+        .map(p => `/api/uploads/${relFromUploads(p.path)}`),
     }));
 
     res.json({ date, items });

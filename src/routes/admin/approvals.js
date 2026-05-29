@@ -20,12 +20,12 @@ export function adminApprovalsRoutes() {
       WHERE a.status = 'submitted'
       ORDER BY a.submitted_at ASC
     `).all();
-    res.json({
-      approvals: rows.map(row => ({
-        ...row,
-        photo_url: row.photo_path ? `/api/uploads/${relFromUploads(row.photo_path)}` : null,
-      })),
-    });
+    const items = rows.map(row => ({
+      ...row,
+      photos: db.prepare('SELECT path FROM assignment_photos WHERE assignment_id = ? ORDER BY id').all(row.id)
+        .map(p => `/api/uploads/${relFromUploads(p.path)}`),
+    }));
+    res.json({ approvals: items });
   });
 
   r.post('/approvals/:id/approve', (req, res) => {
@@ -34,14 +34,13 @@ export function adminApprovalsRoutes() {
     if (!a) return res.status(404).json({ error: 'Not found or not pending' });
     const chore = db.prepare('SELECT points FROM chores WHERE id = ?').get(a.chore_id);
     const points = Number.isFinite(req.body?.points) ? req.body.points : chore.points;
-    deletePhotoIfPresent(a.photo_path);
+    deleteAllPhotos(db, a.id);
     db.prepare(`
       UPDATE assignments
       SET status = 'done',
           approved_at = datetime('now'),
           approved_by = ?,
           points_earned = ?,
-          photo_path = NULL,
           updated_at = datetime('now')
       WHERE id = ?
     `).run(req.user.person_id, points, req.params.id);
@@ -53,12 +52,11 @@ export function adminApprovalsRoutes() {
     const db = req.app.get('db');
     const a = db.prepare('SELECT * FROM assignments WHERE id = ? AND status = ?').get(req.params.id, 'submitted');
     if (!a) return res.status(404).json({ error: 'Not found or not pending' });
-    deletePhotoIfPresent(a.photo_path);
+    deleteAllPhotos(db, a.id);
     db.prepare(`
       UPDATE assignments
       SET status = 'pending',
           note = ?,
-          photo_path = NULL,
           updated_at = datetime('now')
       WHERE id = ?
     `).run(req.body?.note || '', req.params.id);
@@ -69,10 +67,10 @@ export function adminApprovalsRoutes() {
   return r;
 }
 
-function deletePhotoIfPresent(absPath) {
-  if (!absPath) return;
-  try { unlinkSync(absPath); }
-  catch (e) { /* file already gone or unreadable; ignore */ }
+function deleteAllPhotos(db, assignmentId) {
+  const rows = db.prepare('SELECT path FROM assignment_photos WHERE assignment_id = ?').all(assignmentId);
+  for (const r of rows) { try { unlinkSync(r.path); } catch { /* gone */ } }
+  db.prepare('DELETE FROM assignment_photos WHERE assignment_id = ?').run(assignmentId);
 }
 
 function relFromUploads(absPath) {
