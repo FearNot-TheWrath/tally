@@ -389,9 +389,12 @@ function renderApprovalCard(a, host) {
         ]),
       ]),
     ]),
-    a.photo_url ? el('a', { href: a.photo_url, target: '_blank' }, [
-      el('img', { class: 'approval-photo', src: a.photo_url, alt: a.chore_title }),
-    ]) : null,
+    (a.photos && a.photos.length)
+      ? el('div', { class: 'photo-thumbs' }, a.photos.map(url =>
+          el('a', { href: url, target: '_blank' }, [
+            el('img', { class: 'photo-thumb', src: url, alt: a.chore_title }),
+          ])))
+      : null,
     a.note ? el('div', { class: 'approval-note' }, [a.note]) : null,
     el('div', { class: 'row spaced approval-actions' }, [
       el('button', {
@@ -520,9 +523,12 @@ function renderDayReviewRow(it, host, date) {
         ]),
         statusBadge,
       ]),
-      it.photo_url ? el('a', { href: it.photo_url, target: '_blank' }, [
-        el('img', { class: 'review-photo', src: it.photo_url, alt: it.chore_title }),
-      ]) : null,
+      (it.photos && it.photos.length)
+        ? el('div', { class: 'photo-thumbs' }, it.photos.map(url =>
+            el('a', { href: url, target: '_blank' }, [
+              el('img', { class: 'photo-thumb', src: url, alt: it.chore_title }),
+            ])))
+        : null,
       it.status === 'submitted' ? el('div', { class: 'row spaced', style: { marginTop: '8px' } }, [
         el('button', {
           class: 'btn btn-danger btn-sm',

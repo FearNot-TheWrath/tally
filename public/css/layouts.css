@@ -382,3 +382,11 @@
 .txn.excused { opacity: 0.55; }
 .txn.excused .ico { background: #EDE9FE; color: #5B21B6; }
 .wall-col .task.excused { opacity: 0.5; text-decoration: line-through; }
+
+.photo-thumbs { display: flex; flex-wrap: wrap; gap: 8px; }
+.photo-thumbs .photo-thumb {
+  width: 96px; height: 96px;
+  object-fit: cover;
+  border-radius: var(--r-sm);
+  background: var(--card-muted);
+}
