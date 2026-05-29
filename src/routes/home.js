@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { unlinkSync } from 'node:fs';
 import multer from 'multer';
 import { requireRole, requireAnyAuth } from '../auth.js';
 import { today, weekStart } from '../lib/dates.js';
@@ -110,7 +111,7 @@ export function homeRoutes({ uploadsDir = './uploads' } = {}) {
     return doSubmit(req, res, { honorOnly: true });
   });
 
-  r.post('/assignments/:id/submit', requireAnyAuth, upload.single('photo'), (req, res) => {
+  r.post('/assignments/:id/submit', requireAnyAuth, upload.array('photo', 3), (req, res) => {
     return doSubmit(req, res, { uploadsDir });
   });
 
@@ -263,15 +264,24 @@ function doSubmit(req, res, { honorOnly = false, uploadsDir = './uploads' } = {}
   }
 
   // anti_cheat === 'photo'
-  if (!req.file) return res.status(400).json({ error: 'Photo required for this chore' });
-  return savePhoto(req.file.buffer, Number(req.params.id), uploadsDir)
-    .then(absPath => {
+  const files = req.files || [];
+  if (files.length === 0) return res.status(400).json({ error: 'At least one photo is required' });
+
+  // Clear any prior photos for this assignment (re-submit after a reject).
+  const prior = db.prepare('SELECT path FROM assignment_photos WHERE assignment_id = ?').all(req.params.id);
+  for (const p of prior) { try { unlinkSync(p.path); } catch { /* gone already */ } }
+  db.prepare('DELETE FROM assignment_photos WHERE assignment_id = ?').run(req.params.id);
+
+  return Promise.all(files.map((f, i) => savePhoto(f.buffer, Number(req.params.id), uploadsDir, i + 1)))
+    .then(paths => {
+      const ins = db.prepare('INSERT INTO assignment_photos (assignment_id, path) VALUES (?, ?)');
+      for (const p of paths) ins.run(req.params.id, p);
       db.prepare(`
         UPDATE assignments
         SET status = 'submitted', submitted_at = datetime('now'),
-            photo_path = ?, note = ?, updated_at = datetime('now')
+            note = ?, updated_at = datetime('now')
         WHERE id = ?
-      `).run(absPath, req.body?.note || '', req.params.id);
+      `).run(req.body?.note || '', req.params.id);
       res.json({ ok: true, status: 'submitted' });
       notifyWall();
     })

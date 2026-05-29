@@ -69,7 +69,7 @@ test('submit on photo chore without a photo rejects with 400', async () => {
 
   const res = await agent.post(`/api/assignments/${aId}/submit`);
   assert.equal(res.status, 400);
-  assert.match(res.body.error, /photo required/i);
+  assert.match(res.body.error, /at least one photo/i);
 });
 
 test('submit on photo chore WITH photo stores file and sets submitted', async () => {
@@ -87,8 +87,59 @@ test('submit on photo chore WITH photo stores file and sets submitted', async ()
     assert.equal(res.status, 200);
     const row = db.prepare('SELECT * FROM assignments WHERE id = ?').get(aId);
     assert.equal(row.status, 'submitted');
-    assert.ok(row.photo_path && row.photo_path.endsWith(`${aId}.jpg`));
-    assert.ok(existsSync(row.photo_path));
+    const photos = db.prepare('SELECT * FROM assignment_photos WHERE assignment_id = ?').all(aId);
+    assert.equal(photos.length, 1);
+    assert.ok(photos[0].path.endsWith(`${aId}-1.jpg`));
+    assert.ok(existsSync(photos[0].path));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('submit on photo chore accepts up to 3 photos', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'tally-submit-'));
+  try {
+    const db = freshDb();
+    const kid = db.prepare("INSERT INTO people (name, role) VALUES ('K','kid') RETURNING id").get().id;
+    const cId = seedChore(db, 'photo', kid);
+    const aId = seedAssignment(db, cId, kid);
+    const app = freshApp(db, { uploadsDir: root });
+    const agent = await loginKid(app, kid);
+    const res = await agent.post(`/api/assignments/${aId}/submit`)
+      .attach('photo', await jpeg(), { filename: 'a.jpg', contentType: 'image/jpeg' })
+      .attach('photo', await jpeg(), { filename: 'b.jpg', contentType: 'image/jpeg' });
+    assert.equal(res.status, 200);
+    const photos = db.prepare('SELECT * FROM assignment_photos WHERE assignment_id = ?').all(aId);
+    assert.equal(photos.length, 2);
+    for (const p of photos) assert.ok(existsSync(p.path));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('re-submitting a photo chore with fewer photos clears the orphaned ones', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'tally-submit-'));
+  try {
+    const db = freshDb();
+    const kid = db.prepare("INSERT INTO people (name, role) VALUES ('K','kid') RETURNING id").get().id;
+    const cId = seedChore(db, 'photo', kid);
+    const aId = seedAssignment(db, cId, kid);
+    const app = freshApp(db, { uploadsDir: root });
+    const agent = await loginKid(app, kid);
+    // First submit: 2 photos -> slots 1 and 2.
+    await agent.post(`/api/assignments/${aId}/submit`)
+      .attach('photo', await jpeg(), { filename: 'a.jpg', contentType: 'image/jpeg' })
+      .attach('photo', await jpeg(), { filename: 'b.jpg', contentType: 'image/jpeg' });
+    const first = db.prepare('SELECT path FROM assignment_photos WHERE assignment_id = ? ORDER BY id').all(aId);
+    assert.equal(first.length, 2);
+    const slot2Path = first[1].path; // the soon-to-be-orphaned slot-2 file
+    db.prepare("UPDATE assignments SET status = 'pending' WHERE id = ?").run(aId);
+    // Re-submit with just 1 photo -> only slot 1 remains.
+    await agent.post(`/api/assignments/${aId}/submit`)
+      .attach('photo', await jpeg(), { filename: 'c.jpg', contentType: 'image/jpeg' });
+    const after = db.prepare('SELECT path FROM assignment_photos WHERE assignment_id = ?').all(aId);
+    assert.equal(after.length, 1);
+    assert.equal(existsSync(slot2Path), false); // orphaned slot-2 file removed
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
