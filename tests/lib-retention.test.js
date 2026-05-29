@@ -35,7 +35,7 @@ test('purgeOldPhotos deletes .jpg files older than maxAgeDays, leaves fresh ones
   }
 });
 
-test('purgeOldPhotos nulls photo_path on assignment row when file is purged', () => {
+test('purgeOldPhotos deletes the assignment_photos row when its file is purged', () => {
   const root = mkdtempSync(join(tmpdir(), 'tally-purge-'));
   try {
     const db = freshDb();
@@ -43,13 +43,13 @@ test('purgeOldPhotos nulls photo_path on assignment row when file is purged', ()
     const cId = db.prepare("INSERT INTO chores (title, points, default_assignees, anti_cheat) VALUES ('X',5,?,'photo') RETURNING id").get(String(kid)).id;
     const oldPath = writeFakeJpeg(root, '2026-05', 7, 10);
     db.prepare(`
-      INSERT INTO assignments (id, chore_id, person_id, due_date, status, photo_path)
-      VALUES (7, ?, ?, date('now', 'localtime'), 'submitted', ?)
-    `).run(cId, kid, oldPath);
+      INSERT INTO assignments (id, chore_id, person_id, due_date, status)
+      VALUES (7, ?, ?, date('now', 'localtime'), 'submitted')
+    `).run(cId, kid);
+    db.prepare("INSERT INTO assignment_photos (assignment_id, path) VALUES (?, ?)").run(7, oldPath);
 
     purgeOldPhotos(db, root, 5);
-    const row = db.prepare('SELECT photo_path FROM assignments WHERE id = 7').get();
-    assert.equal(row.photo_path, null);
+    assert.equal(db.prepare('SELECT COUNT(*) c FROM assignment_photos WHERE path = ?').get(oldPath).c, 0);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

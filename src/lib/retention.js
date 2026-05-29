@@ -3,7 +3,7 @@ import { join } from 'node:path';
 
 /**
  * Delete any *.jpg under uploadsDir whose mtime is older than maxAgeDays.
- * Also nulls assignments.photo_path for any row pointing at a deleted file.
+ * Also deletes assignment_photos rows pointing at a deleted file.
  *
  * @param {Database} db better-sqlite3 instance
  * @param {string} uploadsDir absolute or relative path to uploads root
@@ -16,8 +16,8 @@ export function purgeOldPhotos(db, uploadsDir, maxAgeDays = 5) {
   if (!existsSync(uploadsDir)) return { deleted, kept };
 
   const cutoff = Date.now() - maxAgeDays * 24 * 60 * 60 * 1000;
-  const nullStmt = db.prepare(
-    "UPDATE assignments SET photo_path = NULL, updated_at = datetime('now') WHERE photo_path = ?"
+  const delStmt = db.prepare(
+    'DELETE FROM assignment_photos WHERE path = ?'
   );
 
   for (const ym of readdirSync(uploadsDir)) {
@@ -34,7 +34,7 @@ export function purgeOldPhotos(db, uploadsDir, maxAgeDays = 5) {
       if (mtimeMs < cutoff) {
         try {
           unlinkSync(file);
-          nullStmt.run(file);
+          delStmt.run(file);
           deleted++;
         } catch { /* file vanished between stat and unlink, ignore */ }
       } else {
