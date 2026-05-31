@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { requireRole } from '../../auth.js';
+import { applyFreezeSweep } from '../../lib/freeze.js';
 
 const ALLOWED_FIELDS = [
   'name', 'dob', 'role', 'avatar_color',
@@ -41,6 +42,9 @@ export function adminPeopleRoutes() {
       UPDATE people SET ${sets} WHERE id = ? RETURNING *
     `).get(...Object.values(data), req.params.id);
     if (!person) return res.status(404).json({ error: 'Not found' });
+    if (data.freeze_start !== undefined || data.freeze_end !== undefined) {
+      applyFreezeSweep(db, person.id);
+    }
     res.json({ person });
   });
 

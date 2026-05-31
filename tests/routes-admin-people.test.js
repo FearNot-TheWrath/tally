@@ -35,6 +35,38 @@ test('admin people: list, create, patch (parent only)', async () => {
   assert.equal(patched.body.person.weekly_target_pts, 200);
 });
 
+import { today } from '../src/lib/dates.js';
+
+test('PATCH /api/admin/people/:id with freeze covering today excuses kid pending chores', async () => {
+  const db = freshDb();
+  const kid = db.prepare("INSERT INTO people (name, role) VALUES ('K','kid') RETURNING id").get().id;
+  const c = db.prepare("INSERT INTO chores (title, weight, recurs, default_assignees) VALUES ('T',3,'daily','') RETURNING id").get().id;
+  const aId = db.prepare("INSERT INTO assignments (chore_id, person_id, due_date, status) VALUES (?, ?, ?, 'pending') RETURNING id").get(c, kid, today()).id;
+  const app = freshApp(db);
+  const agent = await asParent(app, db);
+
+  const res = await agent.patch(`/api/admin/people/${kid}`).send({ freeze_start: today(), freeze_end: today() });
+  assert.equal(res.status, 200);
+  const row = db.prepare('SELECT status, note FROM assignments WHERE id = ?').get(aId);
+  assert.equal(row.status, 'excused');
+  assert.equal(row.note, 'On freeze');
+});
+
+test('PATCH that does NOT touch freeze fields does NOT excuse any chores', async () => {
+  const db = freshDb();
+  const kid = db.prepare("INSERT INTO people (name, role) VALUES ('K','kid') RETURNING id").get().id;
+  const c = db.prepare("INSERT INTO chores (title, weight, recurs, default_assignees) VALUES ('T',3,'daily','') RETURNING id").get().id;
+  const aId = db.prepare("INSERT INTO assignments (chore_id, person_id, due_date, status) VALUES (?, ?, ?, 'pending') RETURNING id").get(c, kid, today()).id;
+  db.prepare("UPDATE people SET freeze_start = ?, freeze_end = ? WHERE id = ?").run(today(), today(), kid);
+  const app = freshApp(db);
+  const agent = await asParent(app, db);
+
+  const res = await agent.patch(`/api/admin/people/${kid}`).send({ weekly_target_pts: 75 });
+  assert.equal(res.status, 200);
+  const row = db.prepare('SELECT status FROM assignments WHERE id = ?').get(aId);
+  assert.equal(row.status, 'pending');
+});
+
 test('admin people rejects non-parent', async () => {
   const db = freshDb();
   const kid = db.prepare("INSERT INTO people (name, role) VALUES ('K','kid') RETURNING id").get().id;
