@@ -88,3 +88,22 @@ test('multiple default_assignees creates one assignment per kid', () => {
   const rows = db.prepare('SELECT * FROM assignments').all();
   assert.equal(rows.length, 2);
 });
+
+test('generateForToday skips kids who are on freeze today', () => {
+  const db = freshDb();
+  const frozen = seedKid(db, 'Frozen');
+  const active = seedKid(db, 'Active');
+  const chore = seedChore(db, {
+    title: 'Make bed', recurs: 'daily', kind: 'recurring',
+    default_assignees: `${frozen},${active}`,
+  });
+  db.prepare("UPDATE people SET freeze_start = ?, freeze_end = ? WHERE id = ?")
+    .run(today(), today(), frozen);
+
+  generateForToday(db);
+
+  const frozenRows = db.prepare('SELECT * FROM assignments WHERE person_id = ?').all(frozen);
+  const activeRows = db.prepare('SELECT * FROM assignments WHERE person_id = ?').all(active);
+  assert.equal(frozenRows.length, 0, 'no row generated for frozen kid');
+  assert.equal(activeRows.length, 1, 'active kid still gets the chore');
+});

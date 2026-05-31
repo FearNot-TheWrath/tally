@@ -1,4 +1,5 @@
 import { today, dayOfWeek, weekStart, fromIso } from './dates.js';
+import { isOnFreeze } from './streak.js';
 
 export function generateForToday(db, date = today()) {
   const dow = dayOfWeek(date);
@@ -17,6 +18,7 @@ export function generateForToday(db, date = today()) {
       if (!shouldRunOn(c, date, dow)) continue;
       const assignees = c.default_assignees.split(',').map(s => parseInt(s, 10)).filter(Boolean);
       for (const personId of assignees) {
+        if (isOnFreeze(db, personId, date)) continue;
         insert.run(c.id, personId, date);
       }
     }
