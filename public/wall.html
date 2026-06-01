@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="dark" />
   <title>Tally · Wall</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -13,14 +14,15 @@
   <link rel="stylesheet" href="/css/layouts.css" />
   <link rel="stylesheet" href="/css/wall-suite.css" />
   <script>
-    // Match the system theme. The old wall did this; the new one needs it too.
-    const dark = matchMedia('(prefers-color-scheme: dark)').matches;
-    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
-    matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
-      document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
-    });
+    // Wall is always dark-themed. Setting data-theme=dark switches our CSS
+    // variables, and color-scheme: dark in the meta + CSS tells the browser
+    // (esp. Edge / Chromium force-dark) NOT to auto-invert the page.
+    document.documentElement.setAttribute('data-theme', 'dark');
   </script>
-  <style>html, body { overflow: hidden; margin: 0; padding: 0; }</style>
+  <style>
+    :root { color-scheme: dark; }
+    html, body { overflow: hidden; margin: 0; padding: 0; background: #0A0A0A; }
+  </style>
 </head>
 <body>
   <div id="wall-root">
