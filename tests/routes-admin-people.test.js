@@ -76,3 +76,49 @@ test('admin people rejects non-parent', async () => {
   const r = await agent.get('/api/admin/people');
   assert.equal(r.status, 403);
 });
+
+test('PATCH /api/admin/people/:id rejects setting only freeze_start without freeze_end (400)', async () => {
+  const db = freshDb();
+  const kid = db.prepare("INSERT INTO people (name, role) VALUES ('K','kid') RETURNING id").get().id;
+  const app = freshApp(db);
+  const agent = await asParent(app, db);
+  const res = await agent.patch(`/api/admin/people/${kid}`).send({ freeze_start: today() });
+  assert.equal(res.status, 400);
+  assert.match(res.body.error, /freeze_start.*freeze_end/i);
+});
+
+test('PATCH /api/admin/people/:id rejects setting only freeze_end without freeze_start (400)', async () => {
+  const db = freshDb();
+  const kid = db.prepare("INSERT INTO people (name, role) VALUES ('K','kid') RETURNING id").get().id;
+  const app = freshApp(db);
+  const agent = await asParent(app, db);
+  const res = await agent.patch(`/api/admin/people/${kid}`).send({ freeze_end: today() });
+  assert.equal(res.status, 400);
+});
+
+test('PATCH /api/admin/people/:id rejects half-freeze with one truthy and one empty', async () => {
+  const db = freshDb();
+  const kid = db.prepare("INSERT INTO people (name, role) VALUES ('K','kid') RETURNING id").get().id;
+  const app = freshApp(db);
+  const agent = await asParent(app, db);
+  const res = await agent.patch(`/api/admin/people/${kid}`).send({ freeze_start: today(), freeze_end: '' });
+  assert.equal(res.status, 400);
+});
+
+test('PATCH /api/admin/people/:id accepts both freeze bounds together', async () => {
+  const db = freshDb();
+  const kid = db.prepare("INSERT INTO people (name, role) VALUES ('K','kid') RETURNING id").get().id;
+  const app = freshApp(db);
+  const agent = await asParent(app, db);
+  const res = await agent.patch(`/api/admin/people/${kid}`).send({ freeze_start: today(), freeze_end: today() });
+  assert.equal(res.status, 200);
+});
+
+test('PATCH /api/admin/people/:id accepts clearing both freeze bounds', async () => {
+  const db = freshDb();
+  const kid = db.prepare("INSERT INTO people (name, role, freeze_start, freeze_end) VALUES ('K','kid',?,?) RETURNING id").get(today(), today()).id;
+  const app = freshApp(db);
+  const agent = await asParent(app, db);
+  const res = await agent.patch(`/api/admin/people/${kid}`).send({ freeze_start: '', freeze_end: '' });
+  assert.equal(res.status, 200);
+});

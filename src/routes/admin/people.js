@@ -36,6 +36,20 @@ export function adminPeopleRoutes() {
   r.patch('/people/:id', (req, res) => {
     const db = req.app.get('db');
     const data = pickFields(req.body || {});
+    // Half-freeze guard: when freeze fields are PATCHed, both must be present together,
+    // either both truthy (set/change) or both empty/null (clear).
+    const hasStart = data.freeze_start !== undefined;
+    const hasEnd = data.freeze_end !== undefined;
+    if (hasStart !== hasEnd) {
+      return res.status(400).json({ error: 'freeze_start and freeze_end must be set together (or both blank to clear)' });
+    }
+    if (hasStart && hasEnd) {
+      const startTruthy = !!(data.freeze_start && String(data.freeze_start).trim());
+      const endTruthy = !!(data.freeze_end && String(data.freeze_end).trim());
+      if (startTruthy !== endTruthy) {
+        return res.status(400).json({ error: 'freeze_start and freeze_end must be set together (or both blank to clear)' });
+      }
+    }
     if (Object.keys(data).length === 0) return res.status(400).json({ error: 'nothing to update' });
     const sets = Object.keys(data).map(k => `${k} = ?`).join(', ');
     const person = db.prepare(`
