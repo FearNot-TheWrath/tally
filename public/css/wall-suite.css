@@ -46,6 +46,17 @@
 .wall-panel.is-active { opacity: 1; z-index: 1; }
 .wall-panel.is-leaving { z-index: 0; }
 
+/* Chores panel wants a vertical stack at full width (banner + 3-col grid + bonus strip),
+   NOT the centered single-block flex used by weather/verse-fact. */
+.wall-panel.wall-panel-chores {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 16px;
+  padding: 28px 32px;
+}
+
 /* Sleep overlay covers everything. */
 #wall-sleep {
   position: fixed;
