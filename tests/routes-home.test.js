@@ -81,3 +81,67 @@ test('GET /api/home populates points_this_week, percent, projected_pay_cents (wi
     assert.ok(typeof r.display_points === 'number', `display_points missing on ${r.title}`);
   }
 });
+
+test('GET /api/home returns covers for a kid when a sibling is frozen with an excused chore', async () => {
+  const db = freshDb();
+  const frozen = db.prepare("INSERT INTO people (name, role, avatar_color) VALUES ('Gabriel','kid','#22C55E') RETURNING id").get().id;
+  const claimer = db.prepare("INSERT INTO people (name, role, weekly_target_pts) VALUES ('Olivia','kid',100) RETURNING id").get().id;
+  const c = db.prepare("INSERT INTO chores (title, weight, recurs, default_assignees) VALUES ('Walk dogs', 3, 'daily', '') RETURNING id").get().id;
+  db.prepare("INSERT INTO assignments (chore_id, person_id, due_date, status, note) VALUES (?, ?, ?, 'excused', 'On freeze')").run(c, frozen, today());
+  db.prepare("UPDATE people SET freeze_start = ?, freeze_end = ? WHERE id = ?").run(today(), today(), frozen);
+
+  const app = freshApp(db);
+  const agent = request.agent(app);
+  await agent.post('/api/auth/login').send({ person_id: claimer });
+
+  const res = await agent.get('/api/home');
+  assert.equal(res.status, 200);
+  assert.ok(Array.isArray(res.body.covers));
+  assert.equal(res.body.covers.length, 1);
+  assert.equal(res.body.covers[0].owner_name, 'Gabriel');
+  assert.equal(res.body.covers[0].owner_color, '#22C55E');
+  assert.equal(res.body.covers[0].title, 'Walk dogs');
+});
+
+test('GET /api/home covers excludes excused chores when the owner is NOT on freeze', async () => {
+  const db = freshDb();
+  const owner = db.prepare("INSERT INTO people (name, role) VALUES ('Gabriel','kid') RETURNING id").get().id;
+  const viewer = db.prepare("INSERT INTO people (name, role) VALUES ('Olivia','kid') RETURNING id").get().id;
+  const c = db.prepare("INSERT INTO chores (title, weight, recurs, default_assignees) VALUES ('T',3,'daily','') RETURNING id").get().id;
+  db.prepare("INSERT INTO assignments (chore_id, person_id, due_date, status) VALUES (?, ?, ?, 'excused')").run(c, owner, today());
+
+  const app = freshApp(db);
+  const agent = request.agent(app);
+  await agent.post('/api/auth/login').send({ person_id: viewer });
+  const res = await agent.get('/api/home');
+  assert.equal(res.body.covers.length, 0);
+});
+
+test("GET /api/home covers excludes the viewer's own excused chores", async () => {
+  const db = freshDb();
+  const kid = db.prepare("INSERT INTO people (name, role) VALUES ('K','kid') RETURNING id").get().id;
+  const c = db.prepare("INSERT INTO chores (title, weight, recurs, default_assignees) VALUES ('T',3,'daily','') RETURNING id").get().id;
+  db.prepare("INSERT INTO assignments (chore_id, person_id, due_date, status) VALUES (?, ?, ?, 'excused')").run(c, kid, today());
+  db.prepare("UPDATE people SET freeze_start = ?, freeze_end = ? WHERE id = ?").run(today(), today(), kid);
+
+  const app = freshApp(db);
+  const agent = request.agent(app);
+  await agent.post('/api/auth/login').send({ person_id: kid });
+  const res = await agent.get('/api/home');
+  assert.equal(res.body.covers.length, 0);
+});
+
+test('GET /api/home covers excludes bonus-kind chores', async () => {
+  const db = freshDb();
+  const frozen = db.prepare("INSERT INTO people (name, role) VALUES ('Gabriel','kid') RETURNING id").get().id;
+  const claimer = db.prepare("INSERT INTO people (name, role) VALUES ('Olivia','kid') RETURNING id").get().id;
+  const c = db.prepare("INSERT INTO chores (title, points, kind, recurs, default_assignees) VALUES ('Mow', 10, 'bonus', 'none', '') RETURNING id").get().id;
+  db.prepare("INSERT INTO assignments (chore_id, person_id, due_date, status) VALUES (?, ?, ?, 'excused')").run(c, frozen, today());
+  db.prepare("UPDATE people SET freeze_start = ?, freeze_end = ? WHERE id = ?").run(today(), today(), frozen);
+
+  const app = freshApp(db);
+  const agent = request.agent(app);
+  await agent.post('/api/auth/login').send({ person_id: claimer });
+  const res = await agent.get('/api/home');
+  assert.equal(res.body.covers.length, 0);
+});

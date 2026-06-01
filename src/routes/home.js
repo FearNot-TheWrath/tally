@@ -92,6 +92,34 @@ export function homeRoutes({ uploadsDir = './uploads' } = {}) {
         : 0;
     }
 
+    const coverRows = db.prepare(`
+      SELECT a.id, a.person_id AS owner_id, a.due_date,
+             c.title, c.weight, c.anti_cheat,
+             p.name AS owner_name, p.avatar_color AS owner_color
+      FROM assignments a
+      JOIN chores c ON c.id = a.chore_id
+      JOIN people p ON p.id = a.person_id
+      WHERE a.status = 'excused'
+        AND a.person_id != ?
+        AND p.role = 'kid'
+        AND c.kind != 'bonus'
+      ORDER BY p.name, c.title
+    `).all(personId);
+    const covers = coverRows
+      .filter(r => isOnFreeze(db, r.owner_id, r.due_date))
+      .map(r => ({
+        id: r.id,
+        title: r.title,
+        weight: r.weight,
+        anti_cheat: r.anti_cheat,
+        owner_id: r.owner_id,
+        owner_name: r.owner_name,
+        owner_color: r.owner_color,
+        display_points: pts.totalWeight > 0
+          ? Math.round(r.weight / pts.totalWeight * target)
+          : 0,
+      }));
+
     const todayList = assignments.filter(a => a.due_date === today());
     const overdueList = assignments.filter(a => a.due_date !== today());
 
@@ -103,7 +131,7 @@ export function homeRoutes({ uploadsDir = './uploads' } = {}) {
       ORDER BY c.created_at DESC
     `).all();
 
-    res.json({ person, today: todayList, overdue: overdueList, stealable, bonuses });
+    res.json({ person, today: todayList, overdue: overdueList, stealable, bonuses, covers });
   });
 
   // Backward-compat for honor chores; /submit is preferred.
