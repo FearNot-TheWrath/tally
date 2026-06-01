@@ -239,14 +239,18 @@ async function renderWeather() {
   clear(root);
 
   const now   = new Date();
-  const u     = data.units === 'imperial' ? '°F' : '°C';
+  const u     = data.unit === 'C' ? '°C' : '°F';
   const theme = data.theme || 'clear-day';
+  const dayName = iso => {
+    const d = new Date(iso + 'T00:00:00');
+    return DAYS[d.getDay()].slice(0, 3);
+  };
 
   const forecastDays = (data.forecast || []).slice(0, 3).map(day =>
     el('div', { class: 'day' }, [
-      el('div', { class: 'label' }, [day.label]),
-      el('div', { class: 'ico' }, [WEATHER_ICONS[day.icon] || '?']),
-      el('div', { class: 'hilo' }, [`H${day.high}${u} L${day.low}${u}`]),
+      el('div', { class: 'label' }, [dayName(day.day_iso)]),
+      el('div', { class: 'ico' }, [WEATHER_ICONS[day.theme] || '·']),
+      el('div', { class: 'hilo' }, [`${day.high}° / ${day.low}°`]),
     ])
   );
 
