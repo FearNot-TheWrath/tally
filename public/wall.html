@@ -11,24 +11,10 @@
   <link rel="stylesheet" href="/css/base.css" />
   <link rel="stylesheet" href="/css/components.css" />
   <link rel="stylesheet" href="/css/layouts.css" />
-  <link rel="stylesheet" href="/css/wall-suite.css" />
-  <script>
-    // Match system theme, the way the legacy wall did. Light when the user's
-    // OS is light; dark when dark. Avoids fighting the browser over color-scheme.
-    const dark = matchMedia('(prefers-color-scheme: dark)').matches;
-    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
-    matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
-      document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
-    });
-  </script>
-  <style>html, body { overflow: hidden; margin: 0; padding: 0; }</style>
+  <style>html, body { overflow: hidden; }</style>
 </head>
 <body>
-  <div id="wall-root">
-    <header id="wall-header"></header>
-    <main id="wall-stage"></main>
-  </div>
-  <div id="wall-sleep" hidden></div>
+  <div id="wall"></div>
   <script type="module" src="/js/pages/wall.js"></script>
 </body>
 </html>
