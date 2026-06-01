@@ -81,3 +81,18 @@ test('PATCH wall_sleep_clock_style accepts the three known values', async () => 
   }
   assert.equal((await agent.patch('/api/admin/settings/wall_sleep_clock_style').send({ value: 'apple' })).status, 400);
 });
+
+test('PATCH wall_weather_radar accepts on/off and rejects junk', async () => {
+  const db = freshDb(); const app = freshApp(db);
+  const agent = await asParent(app, db);
+  assert.equal((await agent.patch('/api/admin/settings/wall_weather_radar').send({ value: 'off' })).status, 200);
+  assert.equal((await agent.patch('/api/admin/settings/wall_weather_radar').send({ value: 'on' })).status, 200);
+  assert.equal((await agent.patch('/api/admin/settings/wall_weather_radar').send({ value: 'maybe' })).status, 400);
+});
+
+test('PATCH wall_radar_station accepts a 3-4 letter id and rejects junk', async () => {
+  const db = freshDb(); const app = freshApp(db);
+  const agent = await asParent(app, db);
+  assert.equal((await agent.patch('/api/admin/settings/wall_radar_station').send({ value: 'KGRK' })).status, 200);
+  assert.equal((await agent.patch('/api/admin/settings/wall_radar_station').send({ value: '12' })).status, 400);
+});
