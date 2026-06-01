@@ -5,6 +5,21 @@ import { currentStreak, isOnFreeze } from '../lib/streak.js';
 import { wallBus } from '../lib/events.js';
 import { runPayoutIfDue } from '../lib/payout.js';
 import { sweepForfeits } from '../lib/forfeit.js';
+import { fetchOpenMeteo, parseForecast } from '../lib/wall/open-meteo.js';
+
+// In-memory weather cache. Tied to the module so it persists for the process lifetime.
+let weatherCache = null;       // { key, data, fetchedAt }
+let weatherLastSuccess = 0;    // epoch ms of last successful fetch
+let weatherLastFailureLog = 0; // dedupe log lines on repeated failures
+
+const WEATHER_CACHE_MS = 10 * 60 * 1000;
+const WEATHER_STALE_SKIP_MS = 30 * 60 * 1000;
+
+export function _resetWeatherState() {
+  weatherCache = null;
+  weatherLastSuccess = 0;
+  weatherLastFailureLog = 0;
+}
 
 export function wallRoutes() {
   const r = Router();
@@ -40,6 +55,42 @@ export function wallRoutes() {
       sleep_end:         s.wall_sleep_end || '06:00',
       sleep_clock_style: s.wall_sleep_clock_style || 'analog-minimal',
     });
+  });
+
+  r.get('/wall/weather', async (req, res) => {
+    const db = req.app.get('db');
+    const rows = db.prepare(
+      "SELECT key, value FROM settings WHERE key IN ('wall_weather_lat','wall_weather_lon','wall_weather_unit')"
+    ).all();
+    const s = Object.fromEntries(rows.map(r => [r.key, r.value]));
+    const lat = s.wall_weather_lat;
+    const lon = s.wall_weather_lon;
+    const unit = s.wall_weather_unit || 'F';
+    if (!lat || !lon) return res.json({ skip: true, reason: 'no location configured' });
+
+    const cacheKey = `${lat},${lon},${unit}`;
+    const now = Date.now();
+    if (weatherCache && weatherCache.key === cacheKey && (now - weatherCache.fetchedAt) < WEATHER_CACHE_MS) {
+      return res.json({ ...weatherCache.data, unit });
+    }
+    try {
+      const raw = await fetchOpenMeteo(lat, lon, unit);
+      const parsed = parseForecast(raw);
+      weatherCache = { key: cacheKey, data: parsed, fetchedAt: now };
+      weatherLastSuccess = now;
+      return res.json({ ...parsed, unit });
+    } catch (err) {
+      // Dedupe error logs to once per 5 min.
+      if (now - weatherLastFailureLog > 5 * 60 * 1000) {
+        console.error('[wall/weather] fetch failed:', err.message);
+        weatherLastFailureLog = now;
+      }
+      // If we have a recent successful cache (within the stale-skip window), serve it.
+      if (weatherCache && weatherCache.key === cacheKey && (now - weatherLastSuccess) < WEATHER_STALE_SKIP_MS) {
+        return res.json({ ...weatherCache.data, unit, stale: true });
+      }
+      return res.json({ skip: true, reason: 'fetch failed' });
+    }
   });
 
   r.get('/wall', (req, res) => {
