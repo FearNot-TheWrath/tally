@@ -294,10 +294,19 @@ function doSubmit(req, res, { honorOnly = false, uploadsDir = './uploads' } = {}
   if (a.person_id !== req.user.person_id && req.user.role !== 'parent') {
     return res.status(403).json({ error: 'Not your assignment' });
   }
-  const chore = db.prepare('SELECT anti_cheat, points FROM chores WHERE id = ?').get(a.chore_id);
+  const chore = db.prepare('SELECT anti_cheat, points, is_school_work FROM chores WHERE id = ?').get(a.chore_id);
   if (honorOnly && chore.anti_cheat !== 'honor') {
     return res.status(400).json({ error: 'Use /submit for photo/approval chores' });
   }
+
+  // Compute whether finishing this chore RIGHT NOW should stamp forfeited=1.
+  // Only school-work chores due today and submitted past the cutoff get stamped.
+  const _deadlineRow = db.prepare("SELECT value FROM settings WHERE key = 'school_deadline_time'").get();
+  const _deadline = (_deadlineRow && _deadlineRow.value) ? _deadlineRow.value : '16:00';
+  const [_hh, _mm] = _deadline.split(':').map(Number);
+  const _cutoff = new Date();
+  _cutoff.setHours(_hh, _mm, 0, 0);
+  const forfeitOnDone = (chore.is_school_work === 1 && a.due_date === today() && new Date() >= _cutoff) ? 1 : 0;
 
   if (chore.anti_cheat === 'honor') {
     db.prepare(`
@@ -305,9 +314,10 @@ function doSubmit(req, res, { honorOnly = false, uploadsDir = './uploads' } = {}
       SET status = 'done',
           updated_at = datetime('now'),
           late = CASE WHEN due_date < date('now') THEN 1 ELSE 0 END,
-          points_earned = ?
+          points_earned = ?,
+          forfeited = CASE WHEN ? = 1 THEN 1 ELSE forfeited END
       WHERE id = ?
-    `).run(chore.points, req.params.id);
+    `).run(chore.points, forfeitOnDone, req.params.id);
     res.json({ ok: true, status: 'done' });
     notifyWall();
     return;
@@ -317,9 +327,10 @@ function doSubmit(req, res, { honorOnly = false, uploadsDir = './uploads' } = {}
     db.prepare(`
       UPDATE assignments
       SET status = 'submitted', submitted_at = datetime('now'),
-          note = ?, updated_at = datetime('now')
+          note = ?, updated_at = datetime('now'),
+          forfeited = CASE WHEN ? = 1 THEN 1 ELSE forfeited END
       WHERE id = ?
-    `).run(req.body?.note || '', req.params.id);
+    `).run(req.body?.note || '', forfeitOnDone, req.params.id);
     res.json({ ok: true, status: 'submitted' });
     notifyWall();
     return;
@@ -341,9 +352,10 @@ function doSubmit(req, res, { honorOnly = false, uploadsDir = './uploads' } = {}
       db.prepare(`
         UPDATE assignments
         SET status = 'submitted', submitted_at = datetime('now'),
-            note = ?, updated_at = datetime('now')
+            note = ?, updated_at = datetime('now'),
+            forfeited = CASE WHEN ? = 1 THEN 1 ELSE forfeited END
         WHERE id = ?
-      `).run(req.body?.note || '', req.params.id);
+      `).run(req.body?.note || '', forfeitOnDone, req.params.id);
       res.json({ ok: true, status: 'submitted' });
       notifyWall();
     })

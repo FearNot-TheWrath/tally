@@ -157,3 +157,46 @@ test('submit rejects assignment belonging to another kid', async () => {
   const res = await agent.post(`/api/assignments/${aId}/submit`);
   assert.equal(res.status, 403);
 });
+
+test('submit on a school-work honor chore past the deadline sets forfeited=1', async () => {
+  const db = freshDb();
+  const kid = db.prepare("INSERT INTO people (name, role) VALUES ('K','kid') RETURNING id").get().id;
+  const c = db.prepare("INSERT INTO chores (title, points, recurs, default_assignees, anti_cheat, is_school_work) VALUES ('Math', 5, 'daily', ?, 'honor', 1) RETURNING id").get(String(kid)).id;
+  const aId = db.prepare("INSERT INTO assignments (chore_id, person_id, due_date, status) VALUES (?, ?, date('now','localtime'), 'pending') RETURNING id").get(c, kid).id;
+  db.prepare("INSERT INTO settings (key, value) VALUES ('school_deadline_time', '00:00') ON CONFLICT(key) DO UPDATE SET value = excluded.value").run();
+  const app = freshApp(db);
+  const agent = await loginKid(app, kid);
+  const res = await agent.post(`/api/assignments/${aId}/submit`);
+  assert.equal(res.status, 200);
+  const row = db.prepare('SELECT status, forfeited FROM assignments WHERE id = ?').get(aId);
+  assert.equal(row.status, 'done');
+  assert.equal(row.forfeited, 1);
+});
+
+test('submit on a school-work honor chore BEFORE deadline keeps forfeited=0', async () => {
+  const db = freshDb();
+  const kid = db.prepare("INSERT INTO people (name, role) VALUES ('K','kid') RETURNING id").get().id;
+  const c = db.prepare("INSERT INTO chores (title, points, recurs, default_assignees, anti_cheat, is_school_work) VALUES ('Math', 5, 'daily', ?, 'honor', 1) RETURNING id").get(String(kid)).id;
+  const aId = db.prepare("INSERT INTO assignments (chore_id, person_id, due_date, status) VALUES (?, ?, date('now','localtime'), 'pending') RETURNING id").get(c, kid).id;
+  db.prepare("INSERT INTO settings (key, value) VALUES ('school_deadline_time', '23:59') ON CONFLICT(key) DO UPDATE SET value = excluded.value").run();
+  const app = freshApp(db);
+  const agent = await loginKid(app, kid);
+  const res = await agent.post(`/api/assignments/${aId}/submit`);
+  assert.equal(res.status, 200);
+  const row = db.prepare('SELECT forfeited FROM assignments WHERE id = ?').get(aId);
+  assert.equal(row.forfeited, 0);
+});
+
+test('submit on a NON-school honor chore past the (school) deadline keeps forfeited=0', async () => {
+  const db = freshDb();
+  const kid = db.prepare("INSERT INTO people (name, role) VALUES ('K','kid') RETURNING id").get().id;
+  const c = db.prepare("INSERT INTO chores (title, points, recurs, default_assignees, anti_cheat, is_school_work) VALUES ('T', 5, 'daily', ?, 'honor', 0) RETURNING id").get(String(kid)).id;
+  const aId = db.prepare("INSERT INTO assignments (chore_id, person_id, due_date, status) VALUES (?, ?, date('now','localtime'), 'pending') RETURNING id").get(c, kid).id;
+  db.prepare("INSERT INTO settings (key, value) VALUES ('school_deadline_time', '00:00') ON CONFLICT(key) DO UPDATE SET value = excluded.value").run();
+  const app = freshApp(db);
+  const agent = await loginKid(app, kid);
+  const res = await agent.post(`/api/assignments/${aId}/submit`);
+  assert.equal(res.status, 200);
+  const row = db.prepare('SELECT forfeited FROM assignments WHERE id = ?').get(aId);
+  assert.equal(row.forfeited, 0);
+});
