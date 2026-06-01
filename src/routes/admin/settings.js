@@ -13,6 +13,15 @@ const EDITABLE_KEYS = new Set([
   'photo_retention_days',
   'wall_theme',
   'school_deadline_time',
+  'wall_enabled_panels',
+  'wall_chores_dwell_sec',
+  'wall_other_dwell_sec',
+  'wall_weather_lat',
+  'wall_weather_lon',
+  'wall_weather_unit',
+  'wall_sleep_start',
+  'wall_sleep_end',
+  'wall_sleep_clock_style',
 ]);
 
 const READABLE_KEYS = new Set([
@@ -20,6 +29,31 @@ const READABLE_KEYS = new Set([
 ]);
 
 const DAY_NAMES = new Set(['sunday','monday','tuesday','wednesday','thursday','friday','saturday']);
+
+const WALL_PANEL_KEYS = new Set(['chores', 'weather', 'calendar', 'verse-fact']);
+const WALL_CLOCK_STYLES = new Set(['digital', 'analog-minimal', 'analog-classic']);
+
+function isHHMM(s) {
+  return typeof s === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(s);
+}
+function isIntInRange(s, lo, hi) {
+  if (typeof s !== 'string') return false;
+  const n = Number(s);
+  return Number.isInteger(n) && n >= lo && n <= hi;
+}
+function isNumOrEmpty(s, lo, hi) {
+  if (typeof s !== 'string') return false;
+  if (s === '') return true;
+  const n = Number(s);
+  return Number.isFinite(n) && n >= lo && n <= hi;
+}
+function isValidEnabledPanels(s) {
+  if (typeof s !== 'string') return false;
+  const parts = s.split(',').map(p => p.trim()).filter(Boolean);
+  if (parts.length === 0) return false;
+  if (!parts.includes('chores')) return false;
+  return parts.every(p => WALL_PANEL_KEYS.has(p));
+}
 
 export function adminSettingsRoutes() {
   const r = Router();
@@ -47,6 +81,27 @@ export function adminSettingsRoutes() {
     }
     if (key === 'payout_day' && !DAY_NAMES.has(value)) {
       return res.status(400).json({ error: 'payout_day must be a day name (sunday..saturday)' });
+    }
+    if (key === 'wall_enabled_panels' && !isValidEnabledPanels(value)) {
+      return res.status(400).json({ error: 'wall_enabled_panels must be a comma list containing "chores"' });
+    }
+    if ((key === 'wall_chores_dwell_sec' || key === 'wall_other_dwell_sec') && !isIntInRange(value, 5, 600)) {
+      return res.status(400).json({ error: `${key} must be an integer 5..600` });
+    }
+    if (key === 'wall_weather_lat' && !isNumOrEmpty(value, -90, 90)) {
+      return res.status(400).json({ error: 'wall_weather_lat must be a number -90..90 or empty' });
+    }
+    if (key === 'wall_weather_lon' && !isNumOrEmpty(value, -180, 180)) {
+      return res.status(400).json({ error: 'wall_weather_lon must be a number -180..180 or empty' });
+    }
+    if (key === 'wall_weather_unit' && value !== 'F' && value !== 'C') {
+      return res.status(400).json({ error: 'wall_weather_unit must be F or C' });
+    }
+    if ((key === 'wall_sleep_start' || key === 'wall_sleep_end') && !isHHMM(value)) {
+      return res.status(400).json({ error: `${key} must be HH:MM 00:00..23:59` });
+    }
+    if (key === 'wall_sleep_clock_style' && !WALL_CLOCK_STYLES.has(value)) {
+      return res.status(400).json({ error: 'wall_sleep_clock_style must be digital, analog-minimal, or analog-classic' });
     }
     db.prepare(`
       INSERT INTO settings (key, value) VALUES (?, ?)
