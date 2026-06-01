@@ -60,3 +60,13 @@ test('settings endpoints reject non-parent', async () => {
   const res = await agent.get('/api/admin/settings');
   assert.equal(res.status, 403);
 });
+
+test('PATCH /api/admin/settings/school_deadline_time succeeds (whitelisted)', async () => {
+  const db = freshDb();
+  const app = freshApp(db);
+  const agent = await asParent(app, db);
+  const res = await agent.patch('/api/admin/settings/school_deadline_time').send({ value: '17:30' });
+  assert.equal(res.status, 200);
+  const row = db.prepare("SELECT value FROM settings WHERE key = 'school_deadline_time'").get();
+  assert.equal(row.value, '17:30');
+});

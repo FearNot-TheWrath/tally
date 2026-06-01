@@ -6,7 +6,7 @@ const ALLOWED_FIELDS = [
   'title', 'description', 'points', 'kind',
   'recurs', 'recurs_days', 'recurs_anchor', 'due_time',
   'anti_cheat', 'late_tax_pct', 'photo_prompt', 'default_assignees',
-  'weight', 'unstealable',
+  'weight', 'unstealable', 'is_school_work',
 ];
 
 export function adminChoresRoutes() {

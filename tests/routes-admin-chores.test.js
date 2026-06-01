@@ -87,3 +87,19 @@ test('chore POST/PATCH accepts weight (1-5) and unstealable', async () => {
   assert.equal(p.body.chore.weight, 2);
   assert.equal(p.body.chore.unstealable, 1);
 });
+
+test('chore POST/PATCH accepts is_school_work', async () => {
+  const db = freshDb();
+  const app = freshApp(db);
+  const agent = await asParent(app, db);
+
+  const c = await agent.post('/api/admin/chores').send({
+    title: 'Math', weight: 4, is_school_work: 1, recurs: 'daily', anti_cheat: 'honor',
+  });
+  assert.equal(c.status, 200);
+  assert.equal(c.body.chore.is_school_work, 1);
+
+  const p = await agent.patch(`/api/admin/chores/${c.body.chore.id}`).send({ is_school_work: 0 });
+  assert.equal(p.status, 200);
+  assert.equal(p.body.chore.is_school_work, 0);
+});

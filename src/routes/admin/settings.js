@@ -12,6 +12,7 @@ const EDITABLE_KEYS = new Set([
   'payout_time',
   'photo_retention_days',
   'wall_theme',
+  'school_deadline_time',
 ]);
 
 const READABLE_KEYS = new Set([
