@@ -23,6 +23,25 @@ export function wallRoutes() {
     res.on('close', () => wallBus.off('refresh', onRefresh));
   });
 
+  r.get('/wall/config', (req, res) => {
+    const db = req.app.get('db');
+    const rows = db.prepare(
+      "SELECT key, value FROM settings WHERE key LIKE 'wall\\_%' ESCAPE '\\'"
+    ).all();
+    const s = Object.fromEntries(rows.map(r => [r.key, r.value]));
+    res.json({
+      enabled_panels:    s.wall_enabled_panels || 'chores',
+      chores_dwell_sec:  Number(s.wall_chores_dwell_sec || 60),
+      other_dwell_sec:   Number(s.wall_other_dwell_sec || 15),
+      weather_lat:       s.wall_weather_lat || '',
+      weather_lon:       s.wall_weather_lon || '',
+      weather_unit:      s.wall_weather_unit || 'F',
+      sleep_start:       s.wall_sleep_start || '22:00',
+      sleep_end:         s.wall_sleep_end || '06:00',
+      sleep_clock_style: s.wall_sleep_clock_style || 'analog-minimal',
+    });
+  });
+
   r.get('/wall', (req, res) => {
     const db = req.app.get('db');
     runPayoutIfDue(db);
