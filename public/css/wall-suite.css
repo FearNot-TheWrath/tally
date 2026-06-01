@@ -1,17 +1,61 @@
-/* Weather panel fills the wall-page flex column below the header. */
-.wall-page-weather {
-  position: relative;
-  display: flex;
-  flex-direction: column;
+/* Direction B weather layout. The panel root keeps class
+   `wall-page wall-page-weather weather-theme-<theme>`. */
+.wall-page-weather { position: relative; overflow: hidden; }
+
+/* Radar backdrop: fills the body, sits behind content, blended into the gradient. */
+.weather-radar {
+  position: absolute; left: 0; right: 0; top: 64px; bottom: 0; z-index: 0;
+  background-size: cover; background-position: center;
+  opacity: 0.55; mix-blend-mode: screen; pointer-events: none;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 22%, #000 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 22%, #000 100%);
+}
+.weather-radar-tag {
+  position: absolute; right: 16px; top: 72px; z-index: 2;
+  font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em;
+  opacity: 0.7; background: rgba(0,0,0,0.25); padding: 3px 9px; border-radius: 20px;
 }
 
-.weather-body {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+/* Content layer sits above the radar. */
+.weather-layer { position: relative; z-index: 1; flex: 1; display: flex; flex-direction: column; }
+
+.weather-ico, .weather-forecast .ico {
+  font-family: 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
 }
+
+/* Hero row */
+.weather-hero { display: flex; align-items: center; gap: 26px; padding: 4px 4px 0; }
+.weather-hero .weather-ico { font-size: 6vh; filter: drop-shadow(0 2px 4px rgba(0,0,0,.22)); }
+.weather-hero .temp { font-size: 11vh; font-weight: 300; line-height: 0.9; text-shadow: 0 2px 10px rgba(0,0,0,.16); }
+.weather-hero .cond { font-size: 3vh; font-weight: 600; }
+.weather-hero .sub  { font-size: 2vh; opacity: 0.92; }
+.weather-hero .hero-fc { margin-left: auto; display: flex; gap: 2.2vw; }
+.weather-hero .hero-fc .day { text-align: center; }
+.weather-hero .hero-fc .label { font-size: 1.4vh; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.85; }
+.weather-hero .hero-fc .ico { font-size: 3vh; margin: 0.4vh 0; font-family: 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif; }
+.weather-hero .hero-fc .hilo { font-size: 1.9vh; font-weight: 600; font-variant-numeric: tabular-nums; }
+.weather-hero .hero-fc .pop  { font-size: 1.3vh; opacity: 0.8; }
+
+/* Hourly curve */
+.weather-curve { height: 8vh; padding: 1vh 1vw 0; }
+.weather-curve svg { width: 100%; height: 100%; overflow: visible; }
+.weather-curve polyline { fill: none; stroke: rgba(255,255,255,0.95); stroke-width: 1.5; }
+.weather-curve .marker { fill: #fff; }
+.weather-hours { display: flex; justify-content: space-between; padding: 0.4vh 1vw 0;
+  font-size: 1.3vh; opacity: 0.9; text-shadow: 0 1px 3px rgba(0,0,0,.3); }
+
+/* Metrics strip */
+.weather-metrics { margin-top: auto; display: flex; z-index: 1; position: relative;
+  background: rgba(0,0,0,0.18); border-top: 1px solid rgba(255,255,255,0.22); }
+.weather-metrics .m { flex: 1; text-align: center; padding: 1.2vh 4px;
+  border-right: 1px solid rgba(255,255,255,0.16); }
+.weather-metrics .m:last-child { border-right: 0; }
+.weather-metrics .m .k { font-size: 1.2vh; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.85; }
+.weather-metrics .m .v { font-size: 2.4vh; font-weight: 600; }
+
+/* Snow theme keeps dark text for legibility (existing rule sets color #0F172A). */
+.weather-theme-snow .weather-curve polyline { stroke: rgba(15,23,42,0.9); }
+.weather-theme-snow .weather-metrics { background: rgba(255,255,255,0.35); }
 
 /* Sleep face: drifting dim clock rendered inside #wall. */
 #wall .sleep-face {
@@ -34,16 +78,6 @@
 .weather-theme-thunderstorm   { background: linear-gradient(180deg, #0B1220 0%, #1E293B 100%); }
 .weather-theme-snow           { background: linear-gradient(180deg, #E2E8F0 0%, #94A3B8 100%); color: #0F172A; }
 .weather-theme-fog            { background: linear-gradient(180deg, #94A3B8 0%, #64748B 100%); }
-
-/* Weather-panel content layout. */
-.weather-current { text-align: center; }
-.weather-current .temp { font-size: 14vh; font-weight: 700; line-height: 0.9; }
-.weather-current .hilo { font-size: 2.2rem; opacity: 0.9; margin-top: 12px; }
-.weather-forecast { display: flex; gap: 24px; margin-top: 36px; justify-content: center; }
-.weather-forecast .day { text-align: center; opacity: 0.95; }
-.weather-forecast .day .label { font-size: 1.0rem; opacity: 0.85; text-transform: uppercase; letter-spacing: 0.06em; }
-.weather-forecast .day .ico { font-size: 3rem; line-height: 1; margin: 6px 0; }
-.weather-forecast .day .hilo { font-size: 1.4rem; font-variant-numeric: tabular-nums; }
 
 /* Subtle rain animation: 3 droplet layers via pseudo-elements. */
 .weather-theme-rain::before,
