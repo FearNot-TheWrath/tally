@@ -224,6 +224,7 @@ function renderTask(a, root, overdue = false) {
     action = el('span', { class: 'pill pill-info' }, ['Excused']);
   } else if (a.status === 'done') {
     // Honor chores are reversible by tapping the row again; photo/approval are not.
+    const earned = a.forfeited === 1 ? 0 : a.display_points;
     if (a.anti_cheat === 'honor') {
       action = el('button', {
         class: 'btn btn-ghost btn-undo',
@@ -239,9 +240,9 @@ function renderTask(a, root, overdue = false) {
             e.target.disabled = false;
           }
         },
-      }, [`Undo · +${a.display_points}`]);
+      }, [`Undo · +${earned}`]);
     } else {
-      action = el('span', { class: 'pts' }, [`+${a.display_points}`]);
+      action = el('span', { class: 'pts' }, [`+${earned}`]);
     }
   } else if (a.status === 'submitted') {
     action = el('span', { class: 'pill pill-info' }, ['Waiting for parent']);
@@ -333,6 +334,9 @@ function renderTask(a, root, overdue = false) {
   const bonusBadge = a.is_bonus
     ? el('span', { class: 'pill pill-warn', style: { fontSize: '0.62rem', marginLeft: '6px' } }, ['★ bonus'])
     : null;
+  const forfeitedBadge = a.forfeited === 1
+    ? el('span', { class: 'pill pill-warn', style: { fontSize: '0.62rem', marginLeft: '6px' }, title: 'School-work missed deadline — points forfeited' }, ['Late'])
+    : null;
 
   const giveBack = (a.is_bonus && a.status === 'pending')
     ? el('button', {
@@ -359,6 +363,7 @@ function renderTask(a, root, overdue = false) {
         el('span', {}, [a.title]),
         stolenBadge,
         bonusBadge,
+        forfeitedBadge,
         a.status === 'excused' && a.note
           ? el('div', { class: 'muted', style: { fontSize: '0.7rem' } }, [a.note])
           : null,

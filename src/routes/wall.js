@@ -37,7 +37,7 @@ export function wallRoutes() {
 
     const kidIds = kids.map(k => k.id);
     const assignmentRows = kidIds.length === 0 ? [] : db.prepare(`
-      SELECT a.id, a.person_id, a.due_date, a.status, a.stolen_from,
+      SELECT a.id, a.person_id, a.due_date, a.status, a.stolen_from, a.forfeited,
              c.title, c.weight, c.kind, c.points AS chore_points,
              sf.name AS stolen_from_name
       FROM assignments a

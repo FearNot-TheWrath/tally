@@ -49,7 +49,7 @@ export function homeRoutes({ uploadsDir = './uploads' } = {}) {
 
     const assignments = db.prepare(`
       SELECT a.id, a.due_date, a.status, a.note, a.photo_path,
-             a.stolen_from,
+             a.stolen_from, a.forfeited,
              c.title, c.weight, c.anti_cheat, c.kind, c.points AS chore_points,
              sf.name AS stolen_from_name
       FROM assignments a
