@@ -89,6 +89,40 @@ export async function renderHome(root) {
       ])
     : null;
 
+  const coversSection = (data.covers && data.covers.length > 0)
+    ? el('section', { class: 'stack' }, [
+        el('div', { class: 'label' }, ['Cover for a sibling']),
+        ...data.covers.map(s => el('div', { class: 'txn steal-row' }, [
+          el('div', { class: 'left' }, [
+            el('div', { class: 'chip', style: { background: s.owner_color || '#0F172A' } }, [s.owner_name[0]]),
+            el('div', {}, [
+              el('div', {}, [s.title]),
+              el('div', { class: 'muted', style: { fontSize: '0.7rem' } }, [`for ${s.owner_name}`]),
+            ]),
+          ]),
+          el('button', {
+            class: 'btn btn-primary btn-done',
+            onClick: async (e) => {
+              e.stopPropagation();
+              e.target.disabled = true;
+              e.target.textContent = '…';
+              try {
+                await api.post(`/api/assignments/${s.id}/claim-cover`);
+                renderHome(root);
+              } catch (err) {
+                if (err.status === 409) {
+                  alert('Someone beat you to it.');
+                } else {
+                  alert('Could not claim: ' + err.message);
+                }
+                renderHome(root);
+              }
+            },
+          }, [`Claim · +${s.display_points}`]),
+        ])),
+      ])
+    : null;
+
   const stealSection = (data.stealable && data.stealable.length > 0)
     ? el('section', { class: 'stack' }, [
         el('div', { class: 'label' }, ['Steal from a sibling']),
@@ -167,6 +201,7 @@ export async function renderHome(root) {
     todaySection,
     overdueSection,
     bonusBoardSection,
+    coversSection,
     stealSection,
     el('div', { class: 'row', style: { marginTop: 'var(--s5)' } }, [
       el('button', { class: 'btn btn-ghost', onClick: () => logout() }, ['Sign out']),
