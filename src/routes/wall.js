@@ -4,6 +4,7 @@ import { calcWeekPoints } from '../lib/points.js';
 import { currentStreak, isOnFreeze } from '../lib/streak.js';
 import { wallBus } from '../lib/events.js';
 import { runPayoutIfDue } from '../lib/payout.js';
+import { sweepForfeits } from '../lib/forfeit.js';
 
 export function wallRoutes() {
   const r = Router();
@@ -25,6 +26,7 @@ export function wallRoutes() {
   r.get('/wall', (req, res) => {
     const db = req.app.get('db');
     runPayoutIfDue(db);
+    sweepForfeits(db);
     const kids = db.prepare(`
       SELECT id, name, avatar_color, weekly_target_pts, streak_days, bank_cents
       FROM people WHERE role = 'kid' ORDER BY id

@@ -8,6 +8,7 @@ import { savePhoto } from '../lib/photo.js';
 import { currentStreak, streakAtRisk, isOnFreeze } from '../lib/streak.js';
 import { notifyWall } from '../lib/events.js';
 import { runPayoutIfDue } from '../lib/payout.js';
+import { sweepForfeits } from '../lib/forfeit.js';
 
 export function homeRoutes({ uploadsDir = './uploads' } = {}) {
   const r = Router();
@@ -19,6 +20,7 @@ export function homeRoutes({ uploadsDir = './uploads' } = {}) {
   r.get('/home', requireRole('kid'), (req, res) => {
     const db = req.app.get('db');
     runPayoutIfDue(db);
+    sweepForfeits(db);
     const personId = req.user.person_id;
     const person = db.prepare(`
       SELECT id, name, avatar_color, weekly_target_pts, base_pay_cents, bonus_rate_cents,
