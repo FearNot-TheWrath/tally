@@ -222,6 +222,38 @@ export function homeRoutes({ uploadsDir = './uploads' } = {}) {
     notifyWall();
   });
 
+  r.post('/assignments/:id/claim-cover', requireRole('kid'), (req, res) => {
+    const db = req.app.get('db');
+    const claimerId = req.user.person_id;
+    const a = db.prepare(`
+      SELECT a.id, a.person_id, a.due_date, a.status, c.kind, p.role
+      FROM assignments a
+      JOIN chores c ON c.id = a.chore_id
+      JOIN people p ON p.id = a.person_id
+      WHERE a.id = ?
+    `).get(req.params.id);
+    if (!a) return res.status(404).json({ error: 'Not found' });
+    if (a.status !== 'excused') return res.status(409).json({ error: 'Not available to cover' });
+    if (a.kind === 'bonus') return res.status(400).json({ error: 'Bonus chores cannot be covered' });
+    if (a.role !== 'kid' || a.person_id === claimerId) {
+      return res.status(403).json({ error: 'Cannot cover this chore' });
+    }
+    if (!isOnFreeze(db, a.person_id, a.due_date)) {
+      return res.status(400).json({ error: 'Owner is not on freeze for this date' });
+    }
+    const result = db.prepare(`
+      UPDATE assignments
+      SET person_id = ?, status = 'pending', note = '', stolen_from = NULL,
+          updated_at = datetime('now')
+      WHERE id = ? AND status = 'excused'
+    `).run(claimerId, req.params.id);
+    if (result.changes === 0) {
+      return res.status(409).json({ error: 'Already claimed' });
+    }
+    res.json({ ok: true });
+    notifyWall();
+  });
+
   r.post('/assignments/:id/unclaim', requireRole('kid'), (req, res) => {
     const db = req.app.get('db');
     const kidId = req.user.person_id;
