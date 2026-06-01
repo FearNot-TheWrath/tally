@@ -19,6 +19,8 @@ const READABLE_KEYS = new Set([
   ...EDITABLE_KEYS,
 ]);
 
+const DAY_NAMES = new Set(['sunday','monday','tuesday','wednesday','thursday','friday','saturday']);
+
 export function adminSettingsRoutes() {
   const r = Router();
   r.use(requireRole('parent'));
@@ -42,6 +44,9 @@ export function adminSettingsRoutes() {
     const { value } = req.body || {};
     if (typeof value !== 'string') {
       return res.status(400).json({ error: 'value must be a string' });
+    }
+    if (key === 'payout_day' && !DAY_NAMES.has(value)) {
+      return res.status(400).json({ error: 'payout_day must be a day name (sunday..saturday)' });
     }
     db.prepare(`
       INSERT INTO settings (key, value) VALUES (?, ?)

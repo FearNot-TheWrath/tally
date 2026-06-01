@@ -70,3 +70,30 @@ test('PATCH /api/admin/settings/school_deadline_time succeeds (whitelisted)', as
   const row = db.prepare("SELECT value FROM settings WHERE key = 'school_deadline_time'").get();
   assert.equal(row.value, '17:30');
 });
+
+test('PATCH /api/admin/settings/payout_day accepts a valid day name', async () => {
+  const db = freshDb();
+  const app = freshApp(db);
+  const agent = await asParent(app, db);
+  const res = await agent.patch('/api/admin/settings/payout_day').send({ value: 'friday' });
+  assert.equal(res.status, 200);
+  assert.equal(res.body.setting.value, 'friday');
+  assert.equal(db.prepare("SELECT value FROM settings WHERE key='payout_day'").get().value, 'friday');
+});
+
+test('PATCH /api/admin/settings/payout_day rejects numeric strings (guards against legacy bug)', async () => {
+  const db = freshDb();
+  const app = freshApp(db);
+  const agent = await asParent(app, db);
+  const res = await agent.patch('/api/admin/settings/payout_day').send({ value: '0' });
+  assert.equal(res.status, 400);
+  assert.match(res.body.error, /day name/i);
+});
+
+test('PATCH /api/admin/settings/payout_day rejects garbage', async () => {
+  const db = freshDb();
+  const app = freshApp(db);
+  const agent = await asParent(app, db);
+  const res = await agent.patch('/api/admin/settings/payout_day').send({ value: 'whenever' });
+  assert.equal(res.status, 400);
+});

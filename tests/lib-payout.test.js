@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { freshDb } from './helpers.js';
-import { runPayoutIfDue, _resetCache } from '../src/lib/payout.js';
+import { runPayoutIfDue, _resetCache, parsePayoutDay } from '../src/lib/payout.js';
 import { today, toIso, weekStart } from '../src/lib/dates.js';
 
 function seedKid(db, name = 'K', target = 100, basePay = 1000, bonusRate = 10) {
@@ -115,4 +115,42 @@ test('bank_cents reflects deposited amount', () => {
   ).get(kid, ws);
   assert.ok(deposit);
   assert.equal(deposit.amount_cents, person.bank_cents);
+});
+
+test('parsePayoutDay: accepts day names case-insensitively', () => {
+  assert.equal(parsePayoutDay('sunday'), 0);
+  assert.equal(parsePayoutDay('Monday'), 1);
+  assert.equal(parsePayoutDay('SATURDAY'), 6);
+});
+
+test("parsePayoutDay: accepts numeric strings 0..6 (covers the migration-003 seed bug)", () => {
+  assert.equal(parsePayoutDay('0'), 0);
+  assert.equal(parsePayoutDay('6'), 6);
+  assert.equal(parsePayoutDay(3), 3);
+});
+
+test('parsePayoutDay: falls back to 0 for null, empty, or garbage', () => {
+  assert.equal(parsePayoutDay(null), 0);
+  assert.equal(parsePayoutDay(''), 0);
+  assert.equal(parsePayoutDay('nope'), 0);
+  assert.equal(parsePayoutDay('7'), 0);
+  assert.equal(parsePayoutDay('-1'), 0);
+});
+
+test("regression: legacy payout_day='0' (numeric string) actually fires payouts", () => {
+  _resetCache();
+  const db = freshDb();
+  const kid = seedKid(db);
+  const c = seedChore(db);
+  const lastSunday = new Date();
+  lastSunday.setDate(lastSunday.getDate() - lastSunday.getDay() - 7);
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(lastSunday);
+    d.setDate(d.getDate() + i);
+    seedDoneAssignment(db, c, kid, toIso(d));
+  }
+  setPayoutSettings(db, '0', '00:00');
+  runPayoutIfDue(db);
+  const person = db.prepare('SELECT bank_cents FROM people WHERE id = ?').get(kid);
+  assert.ok(person.bank_cents > 0, 'legacy numeric payout_day must not block payout');
 });

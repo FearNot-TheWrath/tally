@@ -4,6 +4,15 @@ import { sendToPerson } from './push.js';
 
 const DAY_MAP = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
 
+export function parsePayoutDay(raw) {
+  if (raw == null || raw === '') return 0;
+  const key = String(raw).toLowerCase();
+  if (DAY_MAP[key] !== undefined) return DAY_MAP[key];
+  const n = Number(raw);
+  if (Number.isInteger(n) && n >= 0 && n <= 6) return n;
+  return 0;
+}
+
 let lastPayoutCheck = 0;
 
 export function _resetCache() {
@@ -17,7 +26,7 @@ export function runPayoutIfDue(db) {
 
   const dayRow = db.prepare("SELECT value FROM settings WHERE key = 'payout_day'").get();
   const timeRow = db.prepare("SELECT value FROM settings WHERE key = 'payout_time'").get();
-  const payoutDay = DAY_MAP[dayRow?.value || 'sunday'];
+  const payoutDay = parsePayoutDay(dayRow?.value);
   const payoutTime = timeRow?.value || '20:00';
 
   const boundary = mostRecentBoundary(payoutDay, payoutTime);
