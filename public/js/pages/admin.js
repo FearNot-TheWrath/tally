@@ -263,7 +263,7 @@ async function renderChores(host) {
 function editChore(chore, host, kids) {
   const isNew = !chore;
   const data = chore ? { ...chore } : {
-    title: '', points: 5, weight: 3, unstealable: 0,
+    title: '', points: 5, weight: 3, unstealable: 0, is_school_work: 0,
     kind: 'recurring', recurs: 'daily', anti_cheat: 'honor',
     default_assignees: '', recurs_days: '',
   };
@@ -292,6 +292,16 @@ function editChore(chore, host, kids) {
           onChange: e => { data.unstealable = e.target.checked ? 1 : 0; },
         }),
         el('span', {}, ['Unstealable: siblings cannot steal it']),
+      ]),
+    ]),
+    el('div', { class: 'form-field' }, [
+      el('label', { class: 'row', style: { gap: '6px', cursor: 'pointer' } }, [
+        el('input', {
+          type: 'checkbox',
+          checked: data.is_school_work === 1,
+          onChange: e => { data.is_school_work = e.target.checked ? 1 : 0; },
+        }),
+        el('span', {}, ['School work: forfeits points if not done by the school deadline']),
       ]),
     ]),
     el('div', { class: 'form-field' }, [
@@ -611,6 +621,11 @@ async function renderSettings(host) {
     'payout_time', '20:00',
     'Payout time (24-hour local)',
     'Time on payout day when the deposit happens (on next app visit after this time).',
+  ));
+  host.appendChild(timeField(
+    'school_deadline_time', '16:00',
+    'School-work deadline (24-hour local)',
+    'After this time, any unsubmitted school-work chores forfeit their points for the day (they still count toward percent and streak as missed).',
   ));
 
   const retentionField = el('div', { class: 'form-field' }, [
