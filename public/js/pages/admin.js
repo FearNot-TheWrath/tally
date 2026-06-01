@@ -612,6 +612,28 @@ async function renderSettings(host) {
     'Payout time (24-hour local)',
     'Time on payout day when the deposit happens (on next app visit after this time).',
   ));
+
+  const retentionField = el('div', { class: 'form-field' }, [
+    el('label', {}, ['Photo retention (days)']),
+    el('input', {
+      type: 'number',
+      min: '1',
+      max: '30',
+      value: s.photo_retention_days || '5',
+      onChange: async (e) => {
+        const v = e.target.value;
+        try {
+          await api.patch('/api/admin/settings/photo_retention_days', { value: String(v) });
+          e.target.style.borderColor = 'var(--green)';
+          setTimeout(() => { e.target.style.borderColor = ''; }, 800);
+        } catch (err) { alert('Save failed: ' + err.message); }
+      },
+    }),
+    el('div', { class: 'muted', style: { fontSize: '0.78rem', marginTop: '4px' } }, [
+      'How long unreviewed photo submissions stay on disk before the daily sweep deletes them.',
+    ]),
+  ]);
+  host.appendChild(retentionField);
 }
 
 /* ───── Bank tab ───── */

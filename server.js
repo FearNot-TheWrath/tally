@@ -8,7 +8,6 @@ import { startScheduler } from './src/lib/scheduler.js';
 const PORT = process.env.PORT || 3007;
 const SECRET = process.env.SESSION_SECRET || 'dev-secret-change-me';
 const UPLOADS_DIR = './uploads';
-const PHOTO_RETENTION_DAYS = 5;
 
 const db = openDb('./tally.db');
 mkdirSync(UPLOADS_DIR, { recursive: true });
@@ -23,14 +22,14 @@ setInterval(() => {
 
 startScheduler(db);
 
-// Daily retention sweep: delete photos older than PHOTO_RETENTION_DAYS days.
+// Daily retention sweep: delete photos older than photo_retention_days setting (default 5).
 try {
-  const r = purgeOldPhotos(db, UPLOADS_DIR, PHOTO_RETENTION_DAYS);
+  const r = purgeOldPhotos(db, UPLOADS_DIR);
   if (r.deleted) console.log(`retention sweep: deleted ${r.deleted}, kept ${r.kept}`);
 } catch (e) { console.error('retention sweep on boot failed:', e); }
 setInterval(() => {
   try {
-    const r = purgeOldPhotos(db, UPLOADS_DIR, PHOTO_RETENTION_DAYS);
+    const r = purgeOldPhotos(db, UPLOADS_DIR);
     if (r.deleted) console.log(`retention sweep: deleted ${r.deleted}, kept ${r.kept}`);
   } catch (e) { console.error('retention sweep failed:', e); }
 }, 24 * 60 * 60 * 1000);

@@ -77,3 +77,40 @@ test('purgeOldPhotos leaves non-jpg files alone', () => {
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+test('purgeOldPhotos honors photo_retention_days setting (e.g. 2 days)', () => {
+  const root = mkdtempSync(join(tmpdir(), 'tally-retention-'));
+  try {
+    const db = freshDb();
+    db.prepare("INSERT INTO settings (key, value) VALUES ('photo_retention_days', '2') ON CONFLICT(key) DO UPDATE SET value = excluded.value").run();
+    const ym = new Date();
+    const dir = join(root, `${ym.getFullYear()}-${String(ym.getMonth()+1).padStart(2,'0')}`);
+    mkdirSync(dir, { recursive: true });
+    const filePath = join(dir, '99-1.jpg');
+    writeFileSync(filePath, Buffer.from([0xff, 0xd8, 0xff]));
+    const threeDaysAgo = (Date.now() - 3 * 24 * 60 * 60 * 1000) / 1000;
+    utimesSync(filePath, threeDaysAgo, threeDaysAgo);
+    purgeOldPhotos(db, root);
+    assert.equal(existsSync(filePath), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('purgeOldPhotos falls back to default 5 days when setting absent', () => {
+  const root = mkdtempSync(join(tmpdir(), 'tally-retention-'));
+  try {
+    const db = freshDb();
+    const ym = new Date();
+    const dir = join(root, `${ym.getFullYear()}-${String(ym.getMonth()+1).padStart(2,'0')}`);
+    mkdirSync(dir, { recursive: true });
+    const filePath = join(dir, '88-1.jpg');
+    writeFileSync(filePath, Buffer.from([0xff, 0xd8, 0xff]));
+    const threeDaysAgo = (Date.now() - 3 * 24 * 60 * 60 * 1000) / 1000;
+    utimesSync(filePath, threeDaysAgo, threeDaysAgo);
+    purgeOldPhotos(db, root);
+    assert.equal(existsSync(filePath), true);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
