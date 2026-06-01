@@ -11,10 +11,15 @@
   <link rel="stylesheet" href="/css/base.css" />
   <link rel="stylesheet" href="/css/components.css" />
   <link rel="stylesheet" href="/css/layouts.css" />
-  <style>html, body { overflow: hidden; }</style>
+  <link rel="stylesheet" href="/css/wall-suite.css" />
+  <style>html, body { overflow: hidden; margin: 0; padding: 0; }</style>
 </head>
 <body>
-  <div id="wall"></div>
+  <div id="wall-root">
+    <header id="wall-header"></header>
+    <main id="wall-stage"></main>
+  </div>
+  <div id="wall-sleep" hidden></div>
   <script type="module" src="/js/pages/wall.js"></script>
 </body>
 </html>

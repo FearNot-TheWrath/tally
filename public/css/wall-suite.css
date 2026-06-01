@@ -1,0 +1,151 @@
+/* Wall Suite layout: persistent header on top, stage takes the rest. */
+#wall-root {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  background: var(--bg, #0b1220);
+  color: var(--ink, #e8ecf3);
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+#wall-header {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: 18px 28px;
+  font-size: 1.6rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+#wall-header .clock { justify-self: start; font-variant-numeric: tabular-nums; }
+#wall-header .date  { justify-self: center; opacity: 0.85; }
+#wall-header .leader { justify-self: end; font-size: 1.0rem; opacity: 0.85; display: flex; gap: 8px; align-items: center; }
+#wall-header .leader .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+#wall-stage {
+  flex: 1 1 auto;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Panels live inside the stage as absolutely-positioned layers
+   so cross-fade works without layout thrash. */
+.wall-panel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  padding: 24px 32px;
+}
+.wall-panel.is-active { opacity: 1; z-index: 1; }
+.wall-panel.is-leaving { z-index: 0; }
+
+/* Sleep overlay covers everything. */
+#wall-sleep {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#wall-sleep .sleep-face {
+  position: absolute;
+  color: rgba(255,255,255,0.12);
+  transition: transform 3s ease;
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+  pointer-events: none;
+}
+#wall-sleep .sleep-face.digital { font-size: 25vh; font-weight: 600; letter-spacing: 0.02em; }
+#wall-sleep .sleep-face.analog  { width: 30vh; height: 30vh; }
+
+/* Weather panel themes. Each sets a background + accent. */
+.weather-theme-clear-day      { background: linear-gradient(160deg, #FBBF24 0%, #38BDF8 70%, #0EA5E9 100%); }
+.weather-theme-clear-night    { background: linear-gradient(180deg, #0F172A 0%, #1E1B4B 100%); }
+.weather-theme-partly-cloudy  { background: linear-gradient(170deg, #93C5FD 0%, #60A5FA 80%); }
+.weather-theme-overcast       { background: linear-gradient(180deg, #475569 0%, #334155 100%); }
+.weather-theme-rain           { background: linear-gradient(180deg, #1E293B 0%, #334155 100%); }
+.weather-theme-thunderstorm   { background: linear-gradient(180deg, #0B1220 0%, #1E293B 100%); }
+.weather-theme-snow           { background: linear-gradient(180deg, #E2E8F0 0%, #94A3B8 100%); color: #0F172A; }
+.weather-theme-fog            { background: linear-gradient(180deg, #94A3B8 0%, #64748B 100%); }
+
+/* Weather-panel content layout. */
+.weather-current { text-align: center; }
+.weather-current .temp { font-size: 14vh; font-weight: 700; line-height: 0.9; }
+.weather-current .hilo { font-size: 2.2rem; opacity: 0.9; margin-top: 12px; }
+.weather-forecast { display: flex; gap: 24px; margin-top: 36px; justify-content: center; }
+.weather-forecast .day { text-align: center; opacity: 0.95; }
+.weather-forecast .day .label { font-size: 1.0rem; opacity: 0.85; text-transform: uppercase; letter-spacing: 0.06em; }
+.weather-forecast .day .ico { font-size: 3rem; line-height: 1; margin: 6px 0; }
+.weather-forecast .day .hilo { font-size: 1.4rem; font-variant-numeric: tabular-nums; }
+
+/* Subtle rain animation: 3 droplet layers via pseudo-elements. */
+.weather-theme-rain::before,
+.weather-theme-rain::after {
+  content: '';
+  position: absolute; inset: 0;
+  background-image:
+    radial-gradient(circle 1px at 20% 30%, rgba(255,255,255,0.5) 1px, transparent 2px),
+    radial-gradient(circle 1px at 50% 60%, rgba(255,255,255,0.4) 1px, transparent 2px),
+    radial-gradient(circle 1px at 80% 20%, rgba(255,255,255,0.6) 1px, transparent 2px);
+  background-size: 200px 200px;
+  animation: rainfall 2.5s linear infinite;
+  pointer-events: none;
+}
+.weather-theme-rain::after { animation-delay: -1.2s; opacity: 0.7; }
+@keyframes rainfall {
+  from { transform: translateY(-100px); }
+  to   { transform: translateY(100px); }
+}
+
+/* Snow animation: slower drift. */
+.weather-theme-snow::before {
+  content: '';
+  position: absolute; inset: 0;
+  background-image:
+    radial-gradient(circle 2px at 25% 10%, rgba(255,255,255,0.95) 2px, transparent 3px),
+    radial-gradient(circle 2px at 60% 40%, rgba(255,255,255,0.85) 2px, transparent 3px),
+    radial-gradient(circle 2px at 90% 70%, rgba(255,255,255,0.9)  2px, transparent 3px);
+  background-size: 220px 220px;
+  animation: snowfall 12s linear infinite;
+  pointer-events: none;
+}
+@keyframes snowfall {
+  from { transform: translateY(-80px); }
+  to   { transform: translateY(120px); }
+}
+
+/* Thunderstorm flash overlay. */
+.weather-theme-thunderstorm::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: rgba(255,255,255,0);
+  animation: lightning 9s infinite;
+  pointer-events: none;
+}
+@keyframes lightning {
+  0%, 95%, 100% { background: rgba(255,255,255,0); }
+  96%, 97%      { background: rgba(255,255,255,0.55); }
+  98%           { background: rgba(255,255,255,0.2); }
+}
+
+/* Clear-night stars. */
+.weather-theme-clear-night::before {
+  content: '';
+  position: absolute; inset: 0;
+  background-image:
+    radial-gradient(circle 1px at 15% 22%, rgba(255,255,255,0.85) 1px, transparent 2px),
+    radial-gradient(circle 1px at 40% 70%, rgba(255,255,255,0.7) 1px, transparent 2px),
+    radial-gradient(circle 1px at 75% 15%, rgba(255,255,255,0.9) 1px, transparent 2px),
+    radial-gradient(circle 1px at 88% 55%, rgba(255,255,255,0.8) 1px, transparent 2px);
+  background-size: 320px 320px;
+  pointer-events: none;
+}
