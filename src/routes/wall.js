@@ -21,6 +21,20 @@ export function _resetWeatherState() {
   weatherLastFailureLog = 0;
 }
 
+function radarBlock(db) {
+  const rows = db.prepare(
+    "SELECT key, value FROM settings WHERE key IN ('wall_weather_radar','wall_radar_station')"
+  ).all();
+  const s = Object.fromEntries(rows.map(r => [r.key, r.value]));
+  const enabled = (s.wall_weather_radar ?? 'on') !== 'off';
+  const station = (s.wall_radar_station || 'KEWX').toUpperCase();
+  if (!enabled) return { enabled: false, url: null };
+  return {
+    enabled: true,
+    url: `https://radar.weather.gov/ridge/standard/${station}_loop.gif?cb=${Date.now()}`,
+  };
+}
+
 export function wallRoutes() {
   const r = Router();
 
@@ -71,14 +85,14 @@ export function wallRoutes() {
     const cacheKey = `${lat},${lon},${unit}`;
     const now = Date.now();
     if (weatherCache && weatherCache.key === cacheKey && (now - weatherCache.fetchedAt) < WEATHER_CACHE_MS) {
-      return res.json({ ...weatherCache.data, unit });
+      return res.json({ ...weatherCache.data, unit, radar: radarBlock(db) });
     }
     try {
       const raw = await fetchOpenMeteo(lat, lon, unit);
       const parsed = parseForecast(raw);
       weatherCache = { key: cacheKey, data: parsed, fetchedAt: now };
       weatherLastSuccess = now;
-      return res.json({ ...parsed, unit });
+      return res.json({ ...parsed, unit, radar: radarBlock(db) });
     } catch (err) {
       // Dedupe error logs to once per 5 min.
       if (now - weatherLastFailureLog > 5 * 60 * 1000) {
@@ -87,7 +101,7 @@ export function wallRoutes() {
       }
       // If we have a recent successful cache (within the stale-skip window), serve it.
       if (weatherCache && weatherCache.key === cacheKey && (now - weatherLastSuccess) < WEATHER_STALE_SKIP_MS) {
-        return res.json({ ...weatherCache.data, unit, stale: true });
+        return res.json({ ...weatherCache.data, unit, stale: true, radar: radarBlock(db) });
       }
       return res.json({ skip: true, reason: 'fetch failed' });
     }
