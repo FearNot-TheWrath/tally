@@ -35,6 +35,10 @@ export function currentStreak(db, personId) {
     }
 
     if (isToday) {
+      const fCount = db.prepare(
+        'SELECT COUNT(*) AS n FROM assignments WHERE person_id = ? AND due_date = ? AND forfeited = 1'
+      ).get(personId, date).n;
+      if (fCount > 0) break;
       date = prevDay(date);
       isToday = false;
       continue;
@@ -80,6 +84,10 @@ export function streakAtRisk(db, personId, warningTime, currentStreakValue) {
 }
 
 function dayQualifies(db, personId, dateIso) {
+  const fCount = db.prepare(
+    'SELECT COUNT(*) AS n FROM assignments WHERE person_id = ? AND due_date = ? AND forfeited = 1'
+  ).get(personId, dateIso).n;
+  if (fCount > 0) return false;
   const row = db.prepare(`
     SELECT COUNT(*) AS total,
            COALESCE(SUM(CASE WHEN a.status = 'done' THEN 1 ELSE 0 END), 0) AS done

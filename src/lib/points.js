@@ -24,6 +24,7 @@ export function calcWeekPoints(db, personId, weekStartIso) {
     WHERE a.due_date BETWEEN ? AND date(?, '+6 days')
       AND a.person_id = ?
       AND a.status = 'done'
+      AND a.forfeited = 0
       AND c.kind != 'bonus'
   `).get(weekStartIso, weekStartIso, personId);
   const doneWeight = doneRow.w;

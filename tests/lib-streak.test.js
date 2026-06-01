@@ -202,3 +202,28 @@ test('streakAtRisk: false when the only pending chore today is excused', () => {
   seedAssignment(db, c, kid, today(), 'excused');
   assert.equal(streakAtRisk(db, kid, '00:00', 5), false);
 });
+
+test('currentStreak: a day with any forfeited row fails the day (streak breaks)', () => {
+  const db = freshDb();
+  const kid = seedKid(db);
+  const c = seedChore(db);
+  seedAssignment(db, c, kid, daysAgo(2), 'done');
+  const c2 = seedChore(db);
+  seedAssignment(db, c2, kid, daysAgo(1), 'done');
+  db.prepare("UPDATE assignments SET forfeited = 1 WHERE chore_id = ? AND person_id = ? AND due_date = ?").run(c2, kid, daysAgo(1));
+  seedAssignment(db, c, kid, today(), 'done');
+  // Walk: today done -> 1. Yesterday forfeit -> day fails -> break. Streak = 1.
+  assert.equal(currentStreak(db, kid), 1);
+});
+
+test('currentStreak: today with a forfeit breaks immediately (no in-progress grace)', () => {
+  const db = freshDb();
+  const kid = seedKid(db);
+  const c = seedChore(db);
+  seedAssignment(db, c, kid, daysAgo(1), 'done');
+  const c2 = seedChore(db);
+  const aId = seedAssignment(db, c2, kid, today(), 'pending');
+  db.prepare("UPDATE assignments SET forfeited = 1 WHERE id = ?").run(aId);
+  // Today has a forfeit -> break immediately. Streak = 0.
+  assert.equal(currentStreak(db, kid), 0);
+});

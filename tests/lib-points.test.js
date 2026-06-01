@@ -199,3 +199,18 @@ test('calcWeekPoints: excusing a chore removes its weight from the denominator',
   assert.equal(after.totalWeight, 3);
   assert.equal(after.weightedPercent, 1);
 });
+
+test('calcWeekPoints: a forfeited done chore contributes 0 to doneWeight but stays in totalWeight', () => {
+  const db = freshDb();
+  const kid = db.prepare("INSERT INTO people (name, role, weekly_target_pts) VALUES ('K','kid',100) RETURNING id").get().id;
+  const c1 = db.prepare("INSERT INTO chores (title, weight, recurs, default_assignees) VALUES ('A',3,'none','') RETURNING id").get().id;
+  const c2 = db.prepare("INSERT INTO chores (title, weight, recurs, default_assignees) VALUES ('B',3,'none','') RETURNING id").get().id;
+  const ws = weekStart(today());
+  db.prepare("INSERT INTO assignments (chore_id, person_id, due_date, status) VALUES (?, ?, ?, 'done')").run(c1, kid, today());
+  db.prepare("INSERT INTO assignments (chore_id, person_id, due_date, status, forfeited) VALUES (?, ?, ?, 'done', 1)").run(c2, kid, today());
+
+  const r = calcWeekPoints(db, kid, ws);
+  assert.equal(r.totalWeight, 6);
+  assert.equal(r.doneWeight, 3);
+  assert.equal(r.weightedPercent, 0.5);
+});
