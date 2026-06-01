@@ -1,82 +1,29 @@
-/* Wall Suite layout: persistent header on top, stage takes the rest. */
-#wall-root {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  width: 100vw;
-  background: var(--bg, #0b1220);
-  color: var(--ink, #e8ecf3);
-  font-family: 'Inter', system-ui, sans-serif;
-}
-
-#wall-header {
-  flex: 0 0 auto;
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  padding: 18px 28px;
-  font-size: 1.6rem;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
-}
-#wall-header .clock { justify-self: start; font-variant-numeric: tabular-nums; }
-#wall-header .date  { justify-self: center; opacity: 0.85; }
-#wall-header .leader { justify-self: end; font-size: 1.0rem; opacity: 0.85; display: flex; gap: 8px; align-items: center; }
-#wall-header .leader .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
-
-#wall-stage {
-  flex: 1 1 auto;
+/* Weather panel fills the wall-page flex column below the header. */
+.wall-page-weather {
   position: relative;
-  overflow: hidden;
-}
-
-/* Panels live inside the stage as absolutely-positioned layers
-   so cross-fade works without layout thrash. */
-.wall-panel {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity 0.4s ease;
-  padding: 24px 32px;
-}
-.wall-panel.is-active { opacity: 1; z-index: 1; }
-.wall-panel.is-leaving { z-index: 0; }
-
-/* Chores panel wants a vertical stack at full width (banner + 3-col grid + bonus strip),
-   NOT the centered single-block flex used by weather/verse-fact. */
-.wall-panel.wall-panel-chores {
   display: flex;
   flex-direction: column;
-  align-items: stretch;
-  justify-content: flex-start;
-  gap: 16px;
-  padding: 28px 32px;
 }
 
-/* Sleep overlay covers everything. */
-#wall-sleep {
-  position: fixed;
-  inset: 0;
-  background: #000;
-  z-index: 1000;
+.weather-body {
+  flex: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
 }
-#wall-sleep .sleep-face {
+
+/* Sleep face: drifting dim clock rendered inside #wall. */
+#wall .sleep-face {
   position: absolute;
   color: rgba(255,255,255,0.12);
-  transition: transform 3s ease;
+  transition: left 3s ease, top 3s ease;
   font-variant-numeric: tabular-nums;
   user-select: none;
   pointer-events: none;
 }
-#wall-sleep .sleep-face.digital { font-size: 25vh; font-weight: 600; letter-spacing: 0.02em; }
-#wall-sleep .sleep-face.analog  { width: 30vh; height: 30vh; }
+#wall .sleep-face.digital { font-size: 25vh; font-weight: 600; letter-spacing: 0.02em; }
+#wall .sleep-face.analog  { width: 30vh; height: 30vh; }
 
 /* Weather panel themes. Each sets a background + accent. */
 .weather-theme-clear-day      { background: linear-gradient(160deg, #FBBF24 0%, #38BDF8 70%, #0EA5E9 100%); }
