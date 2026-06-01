@@ -458,7 +458,14 @@ async function loadConfig() {
   const data = await api.get('/api/wall/config').catch(() => null);
   if (!data) return;
 
-  cfg.enabled_panels    = data.enabled_panels    || ['chores'];
+  // /api/wall/config returns enabled_panels as a comma-separated string;
+  // normalize to an array of known panel keys (others are not built yet).
+  const KNOWN = new Set(['chores', 'weather']);
+  const parsed = (typeof data.enabled_panels === 'string'
+    ? data.enabled_panels.split(',')
+    : Array.isArray(data.enabled_panels) ? data.enabled_panels : ['chores']
+  ).map(s => String(s).trim()).filter(s => KNOWN.has(s));
+  cfg.enabled_panels = parsed.length ? parsed : ['chores'];
   cfg.chores_dwell_sec  = data.chores_dwell_sec  || 60;
   cfg.other_dwell_sec   = data.other_dwell_sec   || 15;
   cfg.sleep_start       = data.sleep_start       || '00:00';
