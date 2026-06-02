@@ -8,6 +8,9 @@
 .weather-radar {
   position: absolute; left: 0; right: 0; top: 64px; bottom: 0; z-index: 0;
   pointer-events: none; overflow: hidden;
+  /* screen blend lets the gradient show through: the near-black map fill drops
+     out, only the faint outlines + the bright rain echoes glow on top. */
+  mix-blend-mode: screen;
   -webkit-mask-image: radial-gradient(135% 118% at 50% 40%, #000 56%, transparent 100%);
   mask-image: radial-gradient(135% 118% at 50% 40%, #000 56%, transparent 100%);
 }

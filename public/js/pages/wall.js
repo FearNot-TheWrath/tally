@@ -259,7 +259,7 @@ async function initRadar(host, r) {
 
   // Faint dark base for geographic context (state/county outlines).
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}.png', {
-    subdomains: 'abcd', opacity: 0.25,
+    subdomains: 'abcd', opacity: 0.5,
   }).addTo(map);
 
   // Pulsing "you are here" dot at home.
