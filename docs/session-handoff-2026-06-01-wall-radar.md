@@ -57,7 +57,7 @@ animation.
 
 ## The display Pi (kiosk)
 
-- **`HSC-Living`, `192.168.1.75`, user `jclopez6398`.** Raspberry Pi 3B, 1 GB RAM,
+- **`HSC-Living`, `HSC-Living.local` (DHCP, was .75/.77 — resolve via mDNS), user `jclopez6398`.** Raspberry Pi 3B, 1 GB RAM,
   32-bit Raspbian trixie, labwc/Wayland. Auto-login already enabled.
 - **Kiosk autostart:** `~/.config/labwc/autostart` runs a self-healing loop:
   `while true; do chromium --kiosk --ozone-platform=wayland
@@ -112,13 +112,13 @@ cd ~/projects/tally && pm2 restart tally --update-env
 pm2 logs tally --lines 30 --nostream
 
 # SSH into the display Pi (passwordless via key)
-ssh -i ~/.ssh/hsc_pi jclopez6398@192.168.1.75
+ssh -i ~/.ssh/hsc_pi jclopez6398@HSC-Living.local
 
 # refresh the kiosk to pull new wall code (self-healing loop relaunches Chromium)
-ssh -i ~/.ssh/hsc_pi jclopez6398@192.168.1.75 'pkill chromium'
+ssh -i ~/.ssh/hsc_pi jclopez6398@HSC-Living.local 'pkill chromium'
 
 # diagnose the kiosk on the Pi
-ssh -i ~/.ssh/hsc_pi jclopez6398@192.168.1.75 'free -h; uptime; pgrep -c chromium; vcgencmd measure_temp; vcgencmd get_throttled'
+ssh -i ~/.ssh/hsc_pi jclopez6398@HSC-Living.local 'free -h; uptime; pgrep -c chromium; vcgencmd measure_temp; vcgencmd get_throttled'
 
 # on-screen rotation debug overlay
 #   open  http://192.168.1.95:3012/wall?debug   (shows build tag, panel, countdown, last error)
