@@ -25,7 +25,7 @@ const REFS = [
   { book: 'Jeremiah', chapter: 29, start: 11, ref: 'Jeremiah 29:11' },
   { book: 'Joshua', chapter: 1, start: 9, ref: 'Joshua 1:9' },
   { book: 'Matthew', chapter: 6, start: 33, ref: 'Matthew 6:33' },
-  { book: 'Matthew', chapter: 11, start: 28, ref: 'Matthew 11:28' },
+  { book: 'Matthew', chapter: 11, start: 28, ref: 'Matthew 11:28', clean: 'Come to me, all you who labor and are burdened, and I will give you rest.' },
   { book: 'Matthew', chapter: 5, start: 16, ref: 'Matthew 5:16' },
   { book: 'Mark', chapter: 12, start: 30, ref: 'Mark 12:30' },
   { book: 'Luke', chapter: 1, start: 37, ref: 'Luke 1:37' },
