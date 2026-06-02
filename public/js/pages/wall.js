@@ -108,8 +108,12 @@ async function renderChores() {
 
   const now = new Date();
 
-  // If only the clock needs updating, update it in place.
-  if (headerOnly) {
+  // If only the clock needs updating, update it in place — but ONLY when the
+  // chores panel is actually on screen. The weather panel also has a
+  // `.wall-header .t` clock, so without the `.wall-cols` guard this fast-path
+  // would update the weather clock and return, leaving weather up forever when
+  // rotating weather -> chores with unchanged chore data.
+  if (headerOnly && root.querySelector('.wall-cols')) {
     const t = root.querySelector('.wall-header .t');
     if (t) { t.textContent = fmtTime(now); return; }
   }
