@@ -9,9 +9,11 @@
 const MAX_SKIP_HOPS = 16; // safety against infinite skip loops
 
 export class Rotation {
-  constructor(enabled, { choresDwellSec = 60, otherDwellSec = 15 } = {}) {
+  constructor(enabled, { choresDwellSec = 60, otherDwellSec = 15, dwellOverrides = {} } = {}) {
     this._choresMs = choresDwellSec * 1000;
     this._otherMs  = otherDwellSec  * 1000;
+    this._overrideMs = {};
+    for (const [k, v] of Object.entries(dwellOverrides)) this._overrideMs[k] = v * 1000;
     this.setEnabled(enabled);
   }
 
@@ -25,7 +27,9 @@ export class Rotation {
   current() { return this._current; }
 
   nextDwellMs() {
-    return this._current === 'chores' ? this._choresMs : this._otherMs;
+    if (this._current === 'chores') return this._choresMs;
+    if (this._overrideMs[this._current] != null) return this._overrideMs[this._current];
+    return this._otherMs;
   }
 
   // shouldSkip(panelKey) -> bool. Called by advance() when it picks a candidate.
