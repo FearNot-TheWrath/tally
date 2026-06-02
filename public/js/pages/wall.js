@@ -244,6 +244,7 @@ async function renderChores() {
 // gradient panel as-is. RainViewer frames are fetched client-side (CORS-open,
 // no API key); the map is non-interactive.
 async function initRadar(host, r) {
+ try {
   if (!window.L || !host) return;
   const lat = Number(r.lat), lon = Number(r.lon), zoom = Number(r.zoom) || 8;
   if (!isFinite(lat) || !isFinite(lon)) return;
@@ -290,6 +291,7 @@ async function initRadar(host, r) {
   } catch { /* radar is decorative; ignore */ }
 
   setTimeout(() => { try { map.invalidateSize(); } catch { /* gone */ } }, 60);
+ } catch (e) { console.error('[wall] radar init failed:', e); }
 }
 
 async function renderWeather() {
@@ -564,9 +566,16 @@ async function renderPanel() {
 function scheduleNext() {
   const ms = rotation.nextDwellMs();
   rotationTimer = setTimeout(async () => {
-    rotation.advance(() => false);
-    await renderPanel();
-    scheduleNext();
+    // A render error must never freeze the wall: always reschedule. Log the
+    // cause so a one-off render failure is visible without halting rotation.
+    try {
+      rotation.advance(() => false);
+      await renderPanel();
+    } catch (e) {
+      console.error('[wall] panel render failed:', e);
+    } finally {
+      scheduleNext();
+    }
   }, ms);
 }
 
