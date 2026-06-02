@@ -53,9 +53,17 @@ let nextSwitchAt = 0;
 // Theme
 // ------------------------------------------------------------------
 
-function applyServerTheme() {
-  const dark = matchMedia('(prefers-color-scheme: dark)').matches;
-  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+// Drive the whole wall's light/dark by day vs night (the same `is_day` the
+// weather slide uses), so the chores slide goes dark at night instead of
+// flashing blinding white after the dark weather slide.
+let wallIsDay = true;
+function applyDayNightTheme() {
+  document.documentElement.setAttribute('data-theme', wallIsDay ? 'light' : 'dark');
+}
+function setDayNight(isDay) {
+  if (isDay === wallIsDay) return;
+  wallIsDay = isDay;
+  applyDayNightTheme();
 }
 
 // ------------------------------------------------------------------
@@ -240,6 +248,8 @@ async function renderChores() {
 async function renderWeather() {
   const data = await api.get('/api/wall/weather').catch(() => null);
   if (!data || data.skip) { await renderChores(); return; }
+
+  setDayNight(!!data.is_day); // keep the whole wall in sync with day/night
 
   clear(root);
   const now = new Date();
@@ -562,10 +572,16 @@ async function loadConfig() {
 // Boot
 // ------------------------------------------------------------------
 
-applyServerTheme();
-matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyServerTheme);
+applyDayNightTheme(); // default light until we learn day/night from the weather
 
 await loadConfig();
+
+// Learn day/night up front so the FIRST chores slide already matches (chores is
+// the home-base slide, shown before the weather slide gets a chance to set it).
+try {
+  const w = await api.get('/api/wall/weather');
+  if (w && !w.skip && 'is_day' in w) setDayNight(!!w.is_day);
+} catch { /* leave default light */ }
 
 checkSleep();
 sleepCheckTimer = setInterval(checkSleep, 60_000);
