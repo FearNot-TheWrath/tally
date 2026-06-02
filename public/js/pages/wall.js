@@ -652,6 +652,17 @@ if (new URLSearchParams(location.search).has('debug')) {
   }, 500);
 }
 
+// Kiosk self-update: reload once a day at ~3 AM (inside the sleep window, so it's
+// never visible) to pick up new deploys without anyone touching the Pi.
+function scheduleDailyReload() {
+  const now = new Date();
+  const next = new Date(now);
+  next.setHours(3, 0, 0, 0);
+  if (next <= now) next.setDate(next.getDate() + 1);
+  setTimeout(() => location.reload(), next - now);
+}
+scheduleDailyReload();
+
 // SSE: only re-render chores if chores panel is active and not sleeping.
 const sse = new EventSource('/api/wall/events');
 sse.addEventListener('refresh', async () => {
