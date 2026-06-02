@@ -25,7 +25,9 @@ export function _resetWeatherState() {
 // location (animated RainViewer tiles + faint CARTO base + a "you are here"
 // dot). The client fetches the tile frames directly from RainViewer, so the
 // server only needs to say whether radar is on and where to center it.
-const RADAR_ZOOM = 8;
+// Zoom 7 is RainViewer's max native radar zoom; higher zooms return an opaque
+// "Zoom Level Not Supported" placeholder tile, so the map sits at 7.
+const RADAR_ZOOM = 7;
 function radarBlock(db, lat, lon) {
   const row = db.prepare("SELECT value FROM settings WHERE key='wall_weather_radar'").get();
   const enabled = (row?.value ?? 'on') !== 'off';

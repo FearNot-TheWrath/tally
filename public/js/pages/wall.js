@@ -259,7 +259,7 @@ async function initRadar(host, r) {
 
   // Faint dark base for geographic context (state/county outlines).
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}.png', {
-    subdomains: 'abcd', opacity: 0.4, detectRetina: true,
+    subdomains: 'abcd', opacity: 0.4,
   }).addTo(map);
 
   // Pulsing "you are here" dot at home.
@@ -276,8 +276,11 @@ async function initRadar(host, r) {
     if (!frames.length || radarMap !== map) return; // torn down while awaiting
     let layer = null, i = 0;
     const show = () => {
+      // RainViewer radar is only generated to zoom 7; cap native fetches there
+      // (Leaflet upscales for any higher map zoom) so we never hit the
+      // "Zoom Level Not Supported" placeholder tile.
       const next = L.tileLayer(`${j.host}${frames[i].path}/256/{z}/{x}/{y}/4/1_1.png`,
-        { opacity: 0.9, detectRetina: true }).addTo(map);
+        { opacity: 0.9, maxNativeZoom: 7, maxZoom: 12 }).addTo(map);
       const prev = layer; layer = next;
       if (prev) setTimeout(() => { try { map.removeLayer(prev); } catch { /* gone */ } }, 500);
       i = (i + 1) % frames.length;
