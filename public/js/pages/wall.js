@@ -160,7 +160,7 @@ async function renderChores() {
                 }, [
                   el('div', {}, [
                     el('span', {}, [t.title]),
-                    t.is_bonus ? el('span', { style: { fontSize: '0.62rem', color: '#92400E', marginLeft: '6px' } }, ['★']) : null,
+                    t.is_bonus ? el('span', { style: { fontSize: '0.62rem', color: 'var(--amber)', marginLeft: '6px' } }, ['★']) : null,
                     t.stolen_from_name ? el('span', { style: { fontSize: '0.62rem', color: 'var(--muted)', marginLeft: '6px' } }, [`(from ${t.stolen_from_name})`]) : null,
                     t.status === 'excused' ? el('span', { style: { fontSize: '0.62rem', color: '#5B21B6', marginLeft: '6px' } }, ['· Excused']) : null,
                   ].filter(Boolean)),
