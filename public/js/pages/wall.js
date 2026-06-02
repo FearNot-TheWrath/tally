@@ -44,6 +44,15 @@ let sleepClockTimer = null;
 let sleepDriftTimer = null;
 let inSleep         = false;
 
+// Leaflet radar backdrop state. Torn down whenever a panel re-renders so the
+// animation interval and map instance never stack across rotations.
+let radarMap   = null;
+let radarTimer = null;
+function teardownRadar() {
+  if (radarTimer) { clearInterval(radarTimer); radarTimer = null; }
+  if (radarMap)   { try { radarMap.remove(); } catch { /* already gone */ } radarMap = null; }
+}
+
 // ------------------------------------------------------------------
 // Theme
 // ------------------------------------------------------------------
@@ -77,6 +86,7 @@ function fmtHHMM(d) {
 // ------------------------------------------------------------------
 
 async function renderChores() {
+  teardownRadar();
   const data = await api.get('/api/wall').catch(() => null);
   if (!data) {
     if (lastDataJson === null) {
@@ -228,7 +238,59 @@ async function renderChores() {
 // Weather render
 // ------------------------------------------------------------------
 
+// Build the Leaflet radar backdrop: faint dark base map, animated RainViewer
+// precipitation, and a pulsing "you are here" dot, centered on the home coords.
+// Decorative and fully self-healing: any fetch/Leaflet error just leaves the
+// gradient panel as-is. RainViewer frames are fetched client-side (CORS-open,
+// no API key); the map is non-interactive.
+async function initRadar(host, r) {
+  if (!window.L || !host) return;
+  const lat = Number(r.lat), lon = Number(r.lon), zoom = Number(r.zoom) || 8;
+  if (!isFinite(lat) || !isFinite(lon)) return;
+
+  const map = L.map(host, {
+    zoomControl: false, attributionControl: false,
+    dragging: false, scrollWheelZoom: false, doubleClickZoom: false,
+    boxZoom: false, keyboard: false, touchZoom: false, inertia: false,
+    zoomAnimation: false, fadeAnimation: false,
+  });
+  radarMap = map;
+  map.setView([lat, lon], zoom);
+
+  // Faint dark base for geographic context (state/county outlines).
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}.png', {
+    subdomains: 'abcd', opacity: 0.4, detectRetina: true,
+  }).addTo(map);
+
+  // Pulsing "you are here" dot at home.
+  L.marker([lat, lon], {
+    interactive: false, keyboard: false,
+    icon: L.divIcon({ className: 'wall-radar-dot', html: '<span class="dot"></span>', iconSize: [16, 16] }),
+  }).addTo(map);
+
+  // Animated precipitation from RainViewer (last ~2h of frames).
+  try {
+    const res = await fetch('https://api.rainviewer.com/public/weather-maps.json');
+    const j = await res.json();
+    const frames = (j.radar?.past || []).concat(j.radar?.nowcast || []);
+    if (!frames.length || radarMap !== map) return; // torn down while awaiting
+    let layer = null, i = 0;
+    const show = () => {
+      const next = L.tileLayer(`${j.host}${frames[i].path}/256/{z}/{x}/{y}/4/1_1.png`,
+        { opacity: 0.9, detectRetina: true }).addTo(map);
+      const prev = layer; layer = next;
+      if (prev) setTimeout(() => { try { map.removeLayer(prev); } catch { /* gone */ } }, 500);
+      i = (i + 1) % frames.length;
+    };
+    show();
+    radarTimer = setInterval(show, 600);
+  } catch { /* radar is decorative; ignore */ }
+
+  setTimeout(() => { try { map.invalidateSize(); } catch { /* gone */ } }, 60);
+}
+
 async function renderWeather() {
+  teardownRadar();
   const data = await api.get('/api/wall/weather').catch(() => null);
   if (!data || data.skip) { await renderChores(); return; }
 
@@ -292,12 +354,13 @@ async function renderWeather() {
     el('div', { class: 'k' }, [k]), el('div', { class: 'v' }, [v]),
   ])));
 
-  const radarEls = [];
-  if (data.radar && data.radar.enabled && data.radar.url) {
-    const bg = el('div', { class: 'weather-radar' }, []);
-    bg.style.backgroundImage = `url('${data.radar.url}')`;
-    radarEls.push(bg, el('div', { class: 'weather-radar-tag' }, ['◗ Live radar']));
-  }
+  const radarEnabled = !!(data.radar && data.radar.enabled && window.L);
+  const radarHost = radarEnabled ? el('div', { class: 'weather-radar', id: 'wall-radar' }, []) : null;
+  const radarEls = radarEnabled ? [
+    radarHost,
+    el('div', { class: 'weather-radar-tag' }, ['◗ Live radar']),
+    el('div', { class: 'weather-radar-attr' }, ['CARTO · RainViewer']),
+  ] : [];
 
   root.appendChild(el('div', { class: `wall-page wall-page-weather weather-theme-${theme}` }, [
     ...radarEls,
@@ -319,6 +382,8 @@ async function renderWeather() {
       metrics,
     ]),
   ]));
+
+  if (radarEnabled) initRadar(radarHost, data.radar);
 }
 
 // ------------------------------------------------------------------
@@ -426,6 +491,7 @@ function enterSleep() {
   if (inSleep) return;
   inSleep = true;
 
+  teardownRadar();
   if (rotationTimer) { clearTimeout(rotationTimer); rotationTimer = null; }
 
   document.body.style.background = '#000';

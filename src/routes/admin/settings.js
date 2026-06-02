@@ -23,7 +23,6 @@ const EDITABLE_KEYS = new Set([
   'wall_sleep_end',
   'wall_sleep_clock_style',
   'wall_weather_radar',
-  'wall_radar_station',
 ]);
 
 const READABLE_KEYS = new Set([
@@ -107,9 +106,6 @@ export function adminSettingsRoutes() {
     }
     if (key === 'wall_weather_radar' && value !== 'on' && value !== 'off') {
       return res.status(400).json({ error: 'wall_weather_radar must be on or off' });
-    }
-    if (key === 'wall_radar_station' && !/^[A-Za-z]{3,4}$/.test(value)) {
-      return res.status(400).json({ error: 'wall_radar_station must be a 3-4 letter NWS station id' });
     }
     db.prepare(`
       INSERT INTO settings (key, value) VALUES (?, ?)

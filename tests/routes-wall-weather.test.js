@@ -71,7 +71,9 @@ test('GET /api/wall/weather surfaces extras and a radar block when enabled', asy
     assert.equal(r.body.condition, 'Sunny');
     assert.ok(Array.isArray(r.body.hourly));
     assert.equal(r.body.radar.enabled, true);
-    assert.match(r.body.radar.url, /KEWX_loop\.gif/);
+    assert.equal(r.body.radar.lat, 30.5);
+    assert.equal(r.body.radar.lon, -97.6);
+    assert.equal(typeof r.body.radar.zoom, 'number');
   } finally {
     globalThis.fetch = originalFetch;
   }
