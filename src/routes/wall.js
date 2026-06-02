@@ -21,6 +21,20 @@ export function _resetWeatherState() {
   weatherLastFailureLog = 0;
 }
 
+// The wall renders radar as a small Leaflet map centered on the weather
+// location (animated RainViewer tiles + faint CARTO base + a "you are here"
+// dot). The client fetches the tile frames directly from RainViewer, so the
+// server only needs to say whether radar is on and where to center it.
+// Zoom 7 is RainViewer's max native radar zoom; higher zooms return an opaque
+// "Zoom Level Not Supported" placeholder tile, so the map sits at 7.
+const RADAR_ZOOM = 7;
+function radarBlock(db, lat, lon) {
+  const row = db.prepare("SELECT value FROM settings WHERE key='wall_weather_radar'").get();
+  const enabled = (row?.value ?? 'on') !== 'off';
+  if (!enabled || !lat || !lon) return { enabled: false };
+  return { enabled: true, lat: Number(lat), lon: Number(lon), zoom: RADAR_ZOOM };
+}
+
 export function wallRoutes() {
   const r = Router();
 
@@ -71,14 +85,14 @@ export function wallRoutes() {
     const cacheKey = `${lat},${lon},${unit}`;
     const now = Date.now();
     if (weatherCache && weatherCache.key === cacheKey && (now - weatherCache.fetchedAt) < WEATHER_CACHE_MS) {
-      return res.json({ ...weatherCache.data, unit });
+      return res.json({ ...weatherCache.data, unit, radar: radarBlock(db, lat, lon) });
     }
     try {
       const raw = await fetchOpenMeteo(lat, lon, unit);
       const parsed = parseForecast(raw);
       weatherCache = { key: cacheKey, data: parsed, fetchedAt: now };
       weatherLastSuccess = now;
-      return res.json({ ...parsed, unit });
+      return res.json({ ...parsed, unit, radar: radarBlock(db, lat, lon) });
     } catch (err) {
       // Dedupe error logs to once per 5 min.
       if (now - weatherLastFailureLog > 5 * 60 * 1000) {
@@ -87,7 +101,7 @@ export function wallRoutes() {
       }
       // If we have a recent successful cache (within the stale-skip window), serve it.
       if (weatherCache && weatherCache.key === cacheKey && (now - weatherLastSuccess) < WEATHER_STALE_SKIP_MS) {
-        return res.json({ ...weatherCache.data, unit, stale: true });
+        return res.json({ ...weatherCache.data, unit, stale: true, radar: radarBlock(db, lat, lon) });
       }
       return res.json({ skip: true, reason: 'fetch failed' });
     }

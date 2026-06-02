@@ -756,6 +756,21 @@ async function renderSettings(host) {
   }, ['Test weather fetch']);
   host.appendChild(el('div', { class: 'form-field' }, [weatherTestBtn]));
 
+  // Radar backdrop
+  const radarToggle = el('div', { class: 'form-field' }, [
+    el('label', {}, ['Weather radar backdrop']),
+    el('select', {
+      onChange: async (e) => {
+        try { await api.patch('/api/admin/settings/wall_weather_radar', { value: e.target.value }); }
+        catch (err) { alert('Save failed: ' + err.message); }
+      },
+    }, [['on','On'], ['off','Off']].map(([v, label]) =>
+        el('option', { value: v, selected: (s.wall_weather_radar || 'on') === v }, [label]))),
+    el('div', { class: 'muted', style: { fontSize: '0.78rem', marginTop: '4px' } },
+      ['Shows live precipitation radar faded behind the weather panel.']),
+  ]);
+  host.appendChild(radarToggle);
+
   // Sleep window
   const sleepTimeField = (key, defaultVal, label, hint) => el('div', { class: 'form-field' }, [
     el('label', {}, [label]),

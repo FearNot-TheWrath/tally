@@ -37,20 +37,20 @@ Approved visually via the brainstorm companion. Layout, top to bottom, inside th
 
 ### Radar backdrop
 
-A precipitation radar layer fills the open body area and sits behind the weather content (`z-index` below the content layer). Treatment:
+> **Revised during implementation (2026-06-01).** The original plan tried the NWS RIDGE composite GIF, but its baked-in gray county base map went muddy under `mix-blend-mode: screen` and could not be centered on Hutto. After visual review with the user we switched to a small **Leaflet** map. This is the shipped approach.
 
-- Fades in from the top with a CSS mask (`linear-gradient(to bottom, transparent 0%, #000 ~22%, #000 100%)`) so it never competes with the hero text.
-- Blended into the theme gradient with `mix-blend-mode: screen` so the dark map base drops out and only precipitation echoes glow through.
-- Opacity around 0.5 to 0.55, tunable.
-- A small "Live radar" tag in the corner.
-- When there is no precipitation the backdrop is nearly invisible (truthful); during storms it lights up behind the numbers.
+A precipitation radar layer fills the open body area and sits behind the weather content (`z-index` below the content layer). It is a **non-interactive Leaflet map** (vendored locally at `public/vendor/leaflet/`, no CDN, no API key), centered on the configured weather lat/lon at zoom 8, composed of:
 
-**Radar source.** To get the clean "precipitation over the gradient" look (no muddy land/county base map), prefer a transparent radar source over the NWS composite GIF. Implementation will validate, in order of preference:
+- **Faint dark base map** — CARTO `dark_nolabels` tiles at ~0.4 opacity, giving subtle state/county outlines for geographic context (replaces the muddy NWS map).
+- **Animated precipitation** — RainViewer transparent radar tiles (`api.rainviewer.com`, CORS-open, no key), cycling the last ~13 frames (~2 hours) on a ~600ms interval at ~0.9 opacity. Frames are fetched client-side.
+- **"You are here" dot** — a pulsing blue Leaflet `divIcon` marker at the home coordinates.
+- **Edge fade** — the whole map container is masked with a radial vignette (`radial-gradient(135% 118% at 50% 40%, #000 56%, transparent 100%)`) so it melts into the gradient on all four edges.
+- A small "Live radar" tag and a tiny "CARTO · RainViewer" attribution.
+- When there is no precipitation the rain layer is nearly empty (truthful); the dark base + dot still anchor the view. During storms the echoes light up.
 
-1. A single transparent radar image for a bounding box centered on the configured lat/lon (for example an NWS GeoServer/nowCOAST WMS `GetMap` PNG with `transparent=true`). One `<img>`, no map library.
-2. If a clean single-image transparent product is not readily available, fall back to the **NWS RIDGE composite loop GIF** (verified working: `https://radar.weather.gov/ridge/standard/KEWX_loop.gif`, ~290KB animated, base map baked in) blended with `screen`.
+The map is non-interactive (all gestures and controls disabled) and self-healing: any Leaflet/RainViewer error leaves the gradient panel intact. The animation interval and map instance are torn down on every panel re-render so they never stack across rotations.
 
-This source choice is a small contained spike at the start of implementation. Either way the panel renders; radar is decorative and degrades gracefully (see Error handling).
+The server only tells the client whether radar is enabled and where to center it; the client builds the map and fetches frames. Radar is decorative and degrades gracefully (see Error handling).
 
 ## Data layer changes (`src/lib/wall/open-meteo.js`)
 
@@ -95,9 +95,8 @@ The user chose to keep emoji glyphs rather than a custom SVG set. To prevent the
 | key | default | notes |
 |---|---|---|
 | `wall_weather_radar` | `on` | `on`/`off`; toggles the radar backdrop |
-| `wall_radar_station` | `KEWX` | NWS RIDGE station id, used if the GIF-fallback source is selected |
 
-Both added via a new migration `013-weather-radar.sql` and whitelisted in `EDITABLE_KEYS`, configurable from the admin Settings Wall Suite card group. Existing weather keys are unchanged.
+Added via migration `013-weather-radar.sql` and whitelisted in `EDITABLE_KEYS`, with an on/off control in the admin Settings Wall Suite card group. Radar centers on the existing `wall_weather_lat`/`wall_weather_lon`, so no separate station/center key is needed. (An early draft added `wall_radar_station` for the NWS-GIF approach; it was dropped when radar moved to Leaflet.)
 
 ## Error handling
 
@@ -115,12 +114,12 @@ Both added via a new migration `013-weather-radar.sql` and whitelisted in `EDITA
 ## Files touched
 
 ```
-public/wall.html                 add wall-suite.css <link> (after layouts.css)
-public/js/pages/wall.js          rewrite renderWeather(): hero + curve + metrics + radar backdrop
-public/css/wall-suite.css        hero/curve/metrics/radar-backdrop styles; @font-face color emoji
+public/wall.html                 link wall-suite.css (after layouts.css) + vendored Leaflet css/js
+public/js/pages/wall.js          rewrite renderWeather(): hero + curve + metrics; initRadar()/teardownRadar() Leaflet backdrop
+public/css/wall-suite.css        hero/curve/metrics styles; Leaflet radar container (vignette mask) + pulsing dot
 src/lib/wall/open-meteo.js       expand request; richer parseForecast; wmoToText helper
-src/routes/wall.js               surface new current/hourly/daily fields on /api/wall/weather; radar source/url
-src/migrations/013-weather-radar.sql  seed wall_weather_radar, wall_radar_station (+ EDITABLE_KEYS)
-public/css/ (assets)             self-hosted color emoji webfont
-test/...                         parseForecast + wmoToText unit tests
+src/routes/wall.js               surface new fields on /api/wall/weather; radarBlock returns {enabled, lat, lon, zoom}
+src/migrations/013-weather-radar.sql  seed wall_weather_radar (+ EDITABLE_KEYS)
+public/vendor/leaflet/           vendored Leaflet 1.9.4 (leaflet.js, leaflet.css)
+test/...                         parseForecast + wmoToText unit tests; route radar-block assertions
 ```

@@ -22,6 +22,7 @@ const EDITABLE_KEYS = new Set([
   'wall_sleep_start',
   'wall_sleep_end',
   'wall_sleep_clock_style',
+  'wall_weather_radar',
 ]);
 
 const READABLE_KEYS = new Set([
@@ -102,6 +103,9 @@ export function adminSettingsRoutes() {
     }
     if (key === 'wall_sleep_clock_style' && !WALL_CLOCK_STYLES.has(value)) {
       return res.status(400).json({ error: 'wall_sleep_clock_style must be digital, analog-minimal, or analog-classic' });
+    }
+    if (key === 'wall_weather_radar' && value !== 'on' && value !== 'off') {
+      return res.status(400).json({ error: 'wall_weather_radar must be on or off' });
     }
     db.prepare(`
       INSERT INTO settings (key, value) VALUES (?, ?)

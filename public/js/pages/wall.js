@@ -13,14 +13,14 @@ const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov
 const DAYS   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 
 const WEATHER_ICONS = {
-  'clear-day':     '☀',
-  'clear-night':   '☾',
+  'clear-day':     '☀️',
+  'clear-night':   '🌙',
   'partly-cloudy': '⛅',
-  'overcast':      '☁',
-  'fog':           '🌫',
-  'rain':          '🌧',
-  'snow':          '❄',
-  'thunderstorm':  '⛈',
+  'overcast':      '☁️',
+  'fog':           '🌫️',
+  'rain':          '🌧️',
+  'snow':          '❄️',
+  'thunderstorm':  '⛈️',
 };
 
 // Config (populated from /api/wall/config on boot; defaults ensure chores-only fallback)
@@ -43,6 +43,20 @@ let sleepCheckTimer = null;
 let sleepClockTimer = null;
 let sleepDriftTimer = null;
 let inSleep         = false;
+
+// Leaflet radar backdrop state. Torn down whenever a panel re-renders so the
+// animation interval and map instance never stack across rotations.
+let radarMap   = null;
+let radarTimer = null;
+
+// Diagnostics (visible only with ?debug in the URL).
+const BUILD_TAG = 'wx-2026-06-01d';
+let lastWallError = '';
+let nextSwitchAt = 0;
+function teardownRadar() {
+  if (radarTimer) { clearInterval(radarTimer); radarTimer = null; }
+  if (radarMap)   { try { radarMap.remove(); } catch { /* already gone */ } radarMap = null; }
+}
 
 // ------------------------------------------------------------------
 // Theme
@@ -77,6 +91,7 @@ function fmtHHMM(d) {
 // ------------------------------------------------------------------
 
 async function renderChores() {
+  teardownRadar();
   const data = await api.get('/api/wall').catch(() => null);
   if (!data) {
     if (lastDataJson === null) {
@@ -93,8 +108,12 @@ async function renderChores() {
 
   const now = new Date();
 
-  // If only the clock needs updating, update it in place.
-  if (headerOnly) {
+  // If only the clock needs updating, update it in place — but ONLY when the
+  // chores panel is actually on screen. The weather panel also has a
+  // `.wall-header .t` clock, so without the `.wall-cols` guard this fast-path
+  // would update the weather clock and return, leaving weather up forever when
+  // rotating weather -> chores with unchanged chore data.
+  if (headerOnly && root.querySelector('.wall-cols')) {
     const t = root.querySelector('.wall-header .t');
     if (t) { t.textContent = fmtTime(now); return; }
   }
@@ -228,45 +247,157 @@ async function renderChores() {
 // Weather render
 // ------------------------------------------------------------------
 
+// Build the Leaflet radar backdrop: faint dark base map, animated RainViewer
+// precipitation, and a pulsing "you are here" dot, centered on the home coords.
+// Decorative and fully self-healing: any fetch/Leaflet error just leaves the
+// gradient panel as-is. RainViewer frames are fetched client-side (CORS-open,
+// no API key); the map is non-interactive.
+async function initRadar(host, r) {
+ try {
+  if (!window.L || !host) return;
+  const lat = Number(r.lat), lon = Number(r.lon), zoom = Number(r.zoom) || 8;
+  if (!isFinite(lat) || !isFinite(lon)) return;
+
+  const map = L.map(host, {
+    zoomControl: false, attributionControl: false,
+    dragging: false, scrollWheelZoom: false, doubleClickZoom: false,
+    boxZoom: false, keyboard: false, touchZoom: false, inertia: false,
+    zoomAnimation: false, fadeAnimation: false,
+  });
+  radarMap = map;
+  map.setView([lat, lon], zoom);
+
+  // Faint dark base for geographic context (state/county outlines).
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}.png', {
+    subdomains: 'abcd', opacity: 0.5,
+  }).addTo(map);
+
+  // Pulsing "you are here" dot at home.
+  L.marker([lat, lon], {
+    interactive: false, keyboard: false,
+    icon: L.divIcon({ className: 'wall-radar-dot', html: '<span class="dot"></span>', iconSize: [16, 16] }),
+  }).addTo(map);
+
+  // Animated precipitation from RainViewer (last ~2h of frames).
+  try {
+    const res = await fetch('https://api.rainviewer.com/public/weather-maps.json');
+    const j = await res.json();
+    const frames = (j.radar?.past || []).concat(j.radar?.nowcast || []);
+    if (!frames.length || radarMap !== map) return; // torn down while awaiting
+    let layer = null, i = 0;
+    const show = () => {
+      // RainViewer radar is only generated to zoom 7; cap native fetches there
+      // (Leaflet upscales for any higher map zoom) so we never hit the
+      // "Zoom Level Not Supported" placeholder tile.
+      const next = L.tileLayer(`${j.host}${frames[i].path}/256/{z}/{x}/{y}/4/1_1.png`,
+        { opacity: 0.9, maxNativeZoom: 7, maxZoom: 12 }).addTo(map);
+      const prev = layer; layer = next;
+      if (prev) setTimeout(() => { try { map.removeLayer(prev); } catch { /* gone */ } }, 500);
+      i = (i + 1) % frames.length;
+    };
+    show();
+    radarTimer = setInterval(show, 600);
+  } catch { /* radar is decorative; ignore */ }
+
+  setTimeout(() => { try { map.invalidateSize(); } catch { /* gone */ } }, 60);
+ } catch (e) { console.error('[wall] radar init failed:', e); }
+}
+
 async function renderWeather() {
+  teardownRadar();
   const data = await api.get('/api/wall/weather').catch(() => null);
-  if (!data) {
-    // Fall back to chores if weather unavailable.
-    await renderChores();
-    return;
-  }
+  if (!data || data.skip) { await renderChores(); return; }
 
   clear(root);
-
-  const now   = new Date();
-  const u     = data.unit === 'C' ? '°C' : '°F';
+  const now = new Date();
+  const u = data.unit === 'C' ? '°C' : '°F';
   const theme = data.theme || 'clear-day';
-  const dayName = iso => {
-    const d = new Date(iso + 'T00:00:00');
-    return DAYS[d.getDay()].slice(0, 3);
+  const dayName = iso => DAYS[new Date(iso + 'T00:00:00').getDay()].slice(0, 3);
+  const hhmm = iso => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    let h = d.getHours(); const m = String(d.getMinutes()).padStart(2, '0');
+    const ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12;
+    return `${h}:${m} ${ap}`;
   };
 
-  const forecastDays = (data.forecast || []).slice(0, 3).map(day =>
+  const heroFc = (data.forecast || []).slice(0, 3).map(day =>
     el('div', { class: 'day' }, [
       el('div', { class: 'label' }, [dayName(day.day_iso)]),
       el('div', { class: 'ico' }, [WEATHER_ICONS[day.theme] || '·']),
-      el('div', { class: 'hilo' }, [`${day.high}° / ${day.low}°`]),
+      el('div', { class: 'hilo' }, [`${day.high}°/${day.low}°`]),
+      el('div', { class: 'pop' }, [`${day.precip}%`]),
     ])
   );
 
+  const hrs = (data.hourly || []).slice(0, 12);
+  let curveEls = [];
+  if (hrs.length >= 2) {
+    const temps = hrs.map(h => h.temp);
+    const min = Math.min(...temps), max = Math.max(...temps);
+    const span = (max - min) || 1;
+    const pts = hrs.map((h, i) => {
+      const x = (i / (hrs.length - 1)) * 100;
+      const y = 24 - ((h.temp - min) / span) * 20;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 100 28');
+    svg.setAttribute('preserveAspectRatio', 'none');
+    const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+    poly.setAttribute('points', pts);
+    svg.appendChild(poly);
+    curveEls = [el('div', { class: 'weather-curve' }, [svg])];
+
+    const fmtH = d => { let h = new Date(d.time).getHours(); const ap = h >= 12 ? 'p' : 'a'; h = h % 12 || 12; return `${h}${ap}`; };
+    const idxs = [0, 3, 6, 9, hrs.length - 1].filter((v, i, a) => v < hrs.length && a.indexOf(v) === i);
+    const labels = idxs.map(i =>
+      el('span', {}, [i === 0 ? `Now ${hrs[0].temp}°` : `${fmtH(hrs[i])} ${hrs[i].temp}°`]));
+    const sun = data.is_day ? `🌙 ${hhmm(data.sunset)}` : `☀️ ${hhmm(data.sunrise)}`;
+    labels.splice(Math.ceil(labels.length / 2), 0, el('span', {}, [sun]));
+    curveEls.push(el('div', { class: 'weather-hours' }, labels));
+  }
+
+  const nextSun = data.is_day ? ['Sunset', hhmm(data.sunset)] : ['Sunrise', hhmm(data.sunrise)];
+  const metrics = el('div', { class: 'weather-metrics' }, [
+    ['Humidity', `${data.humidity}%`],
+    ['Wind', `${data.wind} ${data.unit === 'C' ? 'km/h' : 'mph'}`],
+    ['Rain chance', `${data.today_precip}%`],
+    nextSun,
+  ].map(([k, v]) => el('div', { class: 'm' }, [
+    el('div', { class: 'k' }, [k]), el('div', { class: 'v' }, [v]),
+  ])));
+
+  const radarEnabled = !!(data.radar && data.radar.enabled && window.L);
+  const radarHost = radarEnabled ? el('div', { class: 'weather-radar', id: 'wall-radar' }, []) : null;
+  const radarEls = radarEnabled ? [
+    radarHost,
+    el('div', { class: 'weather-radar-tag' }, ['◗ Live radar']),
+    el('div', { class: 'weather-radar-attr' }, ['CARTO · RainViewer']),
+  ] : [];
+
   root.appendChild(el('div', { class: `wall-page wall-page-weather weather-theme-${theme}` }, [
-    el('div', { class: 'wall-header' }, [
-      el('h2', {}, [`The Lopez House · ${fmtDate(now)}`]),
-      el('span', { class: 't' }, [fmtTime(now)]),
-    ]),
-    el('div', { class: 'weather-body' }, [
-      el('div', { class: 'weather-current' }, [
-        el('div', { class: 'temp' }, [`${data.current_temp}${u}`]),
-        el('div', { class: 'hilo' }, [`H ${data.today_high}${u} · L ${data.today_low}${u}`]),
+    ...radarEls,
+    el('div', { class: 'weather-layer' }, [
+      el('div', { class: 'wall-header' }, [
+        el('h2', {}, [`The Lopez House · ${fmtDate(now)}`]),
+        el('span', { class: 't' }, [fmtTime(now)]),
       ]),
-      el('div', { class: 'weather-forecast' }, forecastDays),
+      el('div', { class: 'weather-hero' }, [
+        el('div', { class: 'weather-ico' }, [WEATHER_ICONS[theme] || '·']),
+        el('div', { class: 'temp' }, [`${data.current_temp}${u}`]),
+        el('div', {}, [
+          el('div', { class: 'cond' }, [data.condition || '']),
+          el('div', { class: 'sub' }, [`Feels ${data.apparent_temp}${u} · H ${data.today_high}° L ${data.today_low}°`]),
+        ]),
+      ]),
+      ...curveEls,
+      el('div', { class: 'weather-fc' }, heroFc),
+      metrics,
     ]),
   ]));
+
+  if (radarEnabled) initRadar(radarHost, data.radar);
 }
 
 // ------------------------------------------------------------------
@@ -374,6 +505,7 @@ function enterSleep() {
   if (inSleep) return;
   inSleep = true;
 
+  teardownRadar();
   if (rotationTimer) { clearTimeout(rotationTimer); rotationTimer = null; }
 
   document.body.style.background = '#000';
@@ -442,10 +574,19 @@ async function renderPanel() {
 
 function scheduleNext() {
   const ms = rotation.nextDwellMs();
+  nextSwitchAt = Date.now() + ms;
   rotationTimer = setTimeout(async () => {
-    rotation.advance(() => false);
-    await renderPanel();
-    scheduleNext();
+    // A render error must never freeze the wall: always reschedule. Log the
+    // cause so a one-off render failure is visible without halting rotation.
+    try {
+      rotation.advance(() => false);
+      await renderPanel();
+    } catch (e) {
+      lastWallError = (e && e.message) || String(e);
+      console.error('[wall] panel render failed:', e);
+    } finally {
+      scheduleNext();
+    }
   }, ms);
 }
 
@@ -495,6 +636,21 @@ checkSleep();
 sleepCheckTimer = setInterval(checkSleep, 60_000);
 
 if (!inSleep) startRotation();
+
+// Optional on-screen diagnostic: load /wall?debug to see rotation state live.
+if (new URLSearchParams(location.search).has('debug')) {
+  const dbg = document.createElement('div');
+  dbg.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:9999;background:rgba(0,0,0,.8);'
+    + 'color:#0f0;font:12px monospace;padding:6px 9px;border-radius:6px;pointer-events:none;white-space:pre;';
+  document.body.appendChild(dbg);
+  setInterval(() => {
+    const secs = Math.max(0, Math.round((nextSwitchAt - Date.now()) / 1000));
+    dbg.textContent =
+      `build ${BUILD_TAG}\npanel ${rotation.current()}  sleep ${inSleep}\n`
+      + `next switch in ${secs}s\nleaflet ${typeof window.L !== 'undefined'}\n`
+      + `err ${lastWallError || 'none'}`;
+  }, 500);
+}
 
 // SSE: only re-render chores if chores panel is active and not sleeping.
 const sse = new EventSource('/api/wall/events');

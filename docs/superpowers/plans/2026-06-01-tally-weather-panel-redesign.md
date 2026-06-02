@@ -10,6 +10,8 @@
 
 **Radar source note:** The spec lists a transparent radar source as preferred, with the NWS RIDGE composite GIF as fallback. This plan ships the **NWS RIDGE loop GIF** (`https://radar.weather.gov/ridge/standard/<STATION>_loop.gif`, verified returning HTTP 200, animated, station configurable). That is exactly the source approved in the visual mockup with `mix-blend-mode: screen`. A transparent RainViewer tile source is an explicit follow-up, out of scope here.
 
+> **As-built revision (2026-06-01):** Tasks 1-6 shipped as written. The radar piece was then reworked: the NWS GIF's gray base map went muddy under the blend and could not be centered on Hutto, so radar was rebuilt as a vendored **Leaflet** map (CARTO dark base + animated **RainViewer** frames + a pulsing Hutto dot + vignette-faded edges), and `wall_radar_station` was dropped (radar centers on `wall_weather_lat`/`lon`). See the revised "Radar backdrop" section of the spec for the shipped design. The Task 2/3 NWS-GIF and station details below are historical.
+
 ---
 
 ## File Structure
