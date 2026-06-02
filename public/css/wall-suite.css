@@ -50,12 +50,17 @@
 .weather-hero .temp { font-size: 11vh; font-weight: 300; line-height: 0.9; text-shadow: 0 2px 10px rgba(0,0,0,.16); }
 .weather-hero .cond { font-size: 3vh; font-weight: 600; }
 .weather-hero .sub  { font-size: 2vh; opacity: 0.92; }
-.weather-hero .hero-fc { margin-left: auto; display: flex; gap: 2.2vw; }
-.weather-hero .hero-fc .day { text-align: center; }
-.weather-hero .hero-fc .label { font-size: 1.4vh; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.85; }
-.weather-hero .hero-fc .ico { font-size: 3vh; margin: 0.4vh 0; font-family: 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif; }
-.weather-hero .hero-fc .hilo { font-size: 1.9vh; font-weight: 600; font-variant-numeric: tabular-nums; }
-.weather-hero .hero-fc .pop  { font-size: 1.3vh; opacity: 0.8; }
+/* 3-day forecast: pinned to the bottom-right, just above the metrics strip. */
+.weather-fc {
+  margin-top: auto; align-self: flex-end;
+  display: flex; gap: 2vw; padding: 0 6px 8px;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+}
+.weather-fc .day { text-align: center; }
+.weather-fc .label { font-size: 1.4vh; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.85; }
+.weather-fc .ico { font-size: 3vh; margin: 0.4vh 0; font-family: 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif; }
+.weather-fc .hilo { font-size: 1.9vh; font-weight: 600; font-variant-numeric: tabular-nums; }
+.weather-fc .pop  { font-size: 1.3vh; opacity: 0.8; }
 
 /* Hourly curve */
 .weather-curve { height: 8vh; padding: 1vh 1vw 0; }
@@ -66,7 +71,7 @@
   font-size: 1.3vh; opacity: 0.9; text-shadow: 0 1px 3px rgba(0,0,0,.3); }
 
 /* Metrics strip */
-.weather-metrics { margin-top: auto; display: flex; z-index: 1; position: relative;
+.weather-metrics { margin-top: 0; display: flex; z-index: 1; position: relative;
   background: rgba(0,0,0,0.18); border-top: 1px solid rgba(255,255,255,0.22); }
 .weather-metrics .m { flex: 1; text-align: center; padding: 1.2vh 4px;
   border-right: 1px solid rgba(255,255,255,0.16); }

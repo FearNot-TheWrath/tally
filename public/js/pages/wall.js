@@ -259,7 +259,7 @@ async function initRadar(host, r) {
 
   // Faint dark base for geographic context (state/county outlines).
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}.png', {
-    subdomains: 'abcd', opacity: 0.4,
+    subdomains: 'abcd', opacity: 0.25,
   }).addTo(map);
 
   // Pulsing "you are here" dot at home.
@@ -379,9 +379,9 @@ async function renderWeather() {
           el('div', { class: 'cond' }, [data.condition || '']),
           el('div', { class: 'sub' }, [`Feels ${data.apparent_temp}${u} · H ${data.today_high}° L ${data.today_low}°`]),
         ]),
-        el('div', { class: 'hero-fc' }, heroFc),
       ]),
       ...curveEls,
+      el('div', { class: 'weather-fc' }, heroFc),
       metrics,
     ]),
   ]));
