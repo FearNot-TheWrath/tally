@@ -278,25 +278,20 @@ async function initRadar(host, r) {
     icon: L.divIcon({ className: 'wall-radar-dot', html: '<span class="dot"></span>', iconSize: [16, 16] }),
   }).addTo(map);
 
-  // Animated precipitation from RainViewer (last ~2h of frames).
+  // A SINGLE latest precipitation frame from RainViewer (no animation). Animating
+  // the 13-frame loop pegged a core on the 1GB Pi 3B; a static frame keeps the
+  // look with almost no ongoing CPU. The frame still refreshes on its own because
+  // the weather panel rebuilds each time it rotates back in (~45s).
   try {
     const res = await fetch('https://api.rainviewer.com/public/weather-maps.json');
     const j = await res.json();
-    const frames = (j.radar?.past || []).concat(j.radar?.nowcast || []);
-    if (!frames.length || radarMap !== map) return; // torn down while awaiting
-    let layer = null, i = 0;
-    const show = () => {
-      // RainViewer radar is only generated to zoom 7; cap native fetches there
-      // (Leaflet upscales for any higher map zoom) so we never hit the
-      // "Zoom Level Not Supported" placeholder tile.
-      const next = L.tileLayer(`${j.host}${frames[i].path}/256/{z}/{x}/{y}/4/1_1.png`,
-        { opacity: 0.9, maxNativeZoom: 7, maxZoom: 12 }).addTo(map);
-      const prev = layer; layer = next;
-      if (prev) setTimeout(() => { try { map.removeLayer(prev); } catch { /* gone */ } }, 500);
-      i = (i + 1) % frames.length;
-    };
-    show();
-    radarTimer = setInterval(show, 600);
+    const past = j.radar?.past || [];
+    const frame = past[past.length - 1]; // most recent observed frame
+    if (!frame || radarMap !== map) return; // torn down while awaiting
+    // RainViewer radar is only generated to zoom 7; cap native fetches there
+    // (Leaflet upscales any higher map zoom) so we never hit the placeholder tile.
+    L.tileLayer(`${j.host}${frame.path}/256/{z}/{x}/{y}/4/1_1.png`,
+      { opacity: 0.9, maxNativeZoom: 7, maxZoom: 12 }).addTo(map);
   } catch { /* radar is decorative; ignore */ }
 
   setTimeout(() => { try { map.invalidateSize(); } catch { /* gone */ } }, 60);
