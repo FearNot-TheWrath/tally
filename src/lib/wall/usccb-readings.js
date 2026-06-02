@@ -30,11 +30,13 @@ function stripTags(html) {
 // Find a reading block by its <h3 class="name"> label and return the raw inner
 // HTML of its .address and .content-body divs.
 function blockByName(html, label) {
-  const nameRe = new RegExp(`<h3 class="name">\\s*${label}\\s*</h3>`, 'i');
+  const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const nameRe = new RegExp(`<h3 class="name">\\s*${escaped}\\s*</h3>`, 'i');
   const m = nameRe.exec(html);
   if (!m) return null;
   const rest = html.slice(m.index);
   const addr = /<div class="address">([\s\S]*?)<\/div>/i.exec(rest);
+  // content-body closes, then the parent innerblock closes — two consecutive </div>s
   const body = /<div class="content-body">([\s\S]*?)<\/div>\s*<\/div>/i.exec(rest);
   return {
     address: addr ? stripTags(addr[1]) : '',
@@ -50,8 +52,9 @@ function firstBlock(html, labels) {
   return null;
 }
 
-// The acclamation verse is the content-body minus the bolded "Alleluia,
-// alleluia." (or seasonal) refrains and the standalone "R." response markers.
+// The acclamation verse is the content-body minus all bolded text (treated as
+// refrain regardless of content — "Alleluia, alleluia.", seasonal substitutes,
+// etc.) and the standalone "R." response markers.
 function cleanAcclamationText(bodyHtml) {
   const noRefrain = bodyHtml.replace(/<strong>[\s\S]*?<\/strong>/gi, ' ');
   return stripTags(noRefrain).replace(/\bR\.\s*/g, '').replace(/\s+/g, ' ').trim();
