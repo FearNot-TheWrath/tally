@@ -5,8 +5,8 @@
 /* Radar backdrop: fills the body, sits behind content, blended into the gradient. */
 .weather-radar {
   position: absolute; left: 0; right: 0; top: 64px; bottom: 0; z-index: 0;
-  background-size: cover; background-position: center;
-  opacity: 0.55; mix-blend-mode: screen; pointer-events: none;
+  background-size: auto 135%; background-position: center -30%; background-repeat: no-repeat;
+  opacity: 0.6; mix-blend-mode: screen; pointer-events: none;
   -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 22%, #000 100%);
   mask-image: linear-gradient(to bottom, transparent 0%, #000 22%, #000 100%);
 }
