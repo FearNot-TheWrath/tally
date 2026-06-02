@@ -7,8 +7,9 @@ proper kiosk. Everything below is shipped, merged to `master`, and pushed.
 
 ## Status
 
-- **Shipped and pushed to GitHub.** Tags `v0.12.1-weather-panel` (panel redesign)
-  and `v0.12.2-wall-radar` (server radar + kiosk) are on `origin/master`.
+- **Shipped and pushed to GitHub.** Tags `v0.12.1-weather-panel` (panel redesign),
+  `v0.12.2-wall-radar` (server radar + kiosk), and `v0.12.3-wall-polish`
+  (day/night theming + subtle bonus bar) are on `origin/master`.
 - **Live** at `https://tally.thelopezfamily.org/wall`, and running as a fullscreen
   kiosk on the display Pi.
 - **Next up (not started):** the Bible verse slide. See "What's next".
@@ -26,6 +27,14 @@ proper kiosk. Everything below is shipped, merged to `master`, and pushed.
   (see Architecture). Toggle with the `wall_weather_radar` setting.
 - **Data:** Open-Meteo (no key) via `src/lib/wall/open-meteo.js`
   (`parseForecast`, `wmoToText`); color emoji via Noto Color Emoji webfont.
+- **Day/night theming (v0.12.3):** the whole wall's `data-theme` is driven by
+  `is_day` from the weather data (NOT the Pi's `prefers-color-scheme`), via
+  `setDayNight()`/`applyDayNightTheme()` in `wall.js`, set on boot and on every
+  weather render. At night the chores slide goes dark too, so you don't get a
+  blinding white flash after the dark weather slide. Light/bright by day.
+- **Bonus bar (v0.12.3):** restyled from loud gold to a subtle, theme-aware amber
+  tint (`color-mix(in srgb, var(--amber) N%, var(--card))` + token-based text), so
+  it stays gentle in both light and dark. Bonus star uses `var(--amber)`.
 
 ## Radar architecture (the important part)
 
