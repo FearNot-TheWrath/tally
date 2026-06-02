@@ -48,6 +48,11 @@ let inSleep         = false;
 // animation interval and map instance never stack across rotations.
 let radarMap   = null;
 let radarTimer = null;
+
+// Diagnostics (visible only with ?debug in the URL).
+const BUILD_TAG = 'wx-2026-06-01d';
+let lastWallError = '';
+let nextSwitchAt = 0;
 function teardownRadar() {
   if (radarTimer) { clearInterval(radarTimer); radarTimer = null; }
   if (radarMap)   { try { radarMap.remove(); } catch { /* already gone */ } radarMap = null; }
@@ -565,6 +570,7 @@ async function renderPanel() {
 
 function scheduleNext() {
   const ms = rotation.nextDwellMs();
+  nextSwitchAt = Date.now() + ms;
   rotationTimer = setTimeout(async () => {
     // A render error must never freeze the wall: always reschedule. Log the
     // cause so a one-off render failure is visible without halting rotation.
@@ -572,6 +578,7 @@ function scheduleNext() {
       rotation.advance(() => false);
       await renderPanel();
     } catch (e) {
+      lastWallError = (e && e.message) || String(e);
       console.error('[wall] panel render failed:', e);
     } finally {
       scheduleNext();
@@ -625,6 +632,21 @@ checkSleep();
 sleepCheckTimer = setInterval(checkSleep, 60_000);
 
 if (!inSleep) startRotation();
+
+// Optional on-screen diagnostic: load /wall?debug to see rotation state live.
+if (new URLSearchParams(location.search).has('debug')) {
+  const dbg = document.createElement('div');
+  dbg.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:9999;background:rgba(0,0,0,.8);'
+    + 'color:#0f0;font:12px monospace;padding:6px 9px;border-radius:6px;pointer-events:none;white-space:pre;';
+  document.body.appendChild(dbg);
+  setInterval(() => {
+    const secs = Math.max(0, Math.round((nextSwitchAt - Date.now()) / 1000));
+    dbg.textContent =
+      `build ${BUILD_TAG}\npanel ${rotation.current()}  sleep ${inSleep}\n`
+      + `next switch in ${secs}s\nleaflet ${typeof window.L !== 'undefined'}\n`
+      + `err ${lastWallError || 'none'}`;
+  }, 500);
+}
 
 // SSE: only re-render chores if chores panel is active and not sleeping.
 const sse = new EventSource('/api/wall/events');
