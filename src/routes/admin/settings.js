@@ -23,6 +23,7 @@ const EDITABLE_KEYS = new Set([
   'wall_sleep_end',
   'wall_sleep_clock_style',
   'wall_weather_radar',
+  'wall_verse_dwell_sec',
 ]);
 
 const READABLE_KEYS = new Set([
@@ -31,7 +32,7 @@ const READABLE_KEYS = new Set([
 
 const DAY_NAMES = new Set(['sunday','monday','tuesday','wednesday','thursday','friday','saturday']);
 
-const WALL_PANEL_KEYS = new Set(['chores', 'weather', 'calendar', 'verse-fact']);
+const WALL_PANEL_KEYS = new Set(['chores', 'weather', 'verse', 'calendar', 'verse-fact']);
 const WALL_CLOCK_STYLES = new Set(['digital', 'analog-minimal', 'analog-classic']);
 
 function isHHMM(s) {
@@ -86,7 +87,7 @@ export function adminSettingsRoutes() {
     if (key === 'wall_enabled_panels' && !isValidEnabledPanels(value)) {
       return res.status(400).json({ error: 'wall_enabled_panels must be a comma list containing "chores"' });
     }
-    if ((key === 'wall_chores_dwell_sec' || key === 'wall_other_dwell_sec') && !isIntInRange(value, 5, 600)) {
+    if ((key === 'wall_chores_dwell_sec' || key === 'wall_other_dwell_sec' || key === 'wall_verse_dwell_sec') && !isIntInRange(value, 5, 600)) {
       return res.status(400).json({ error: `${key} must be an integer 5..600` });
     }
     if (key === 'wall_weather_lat' && !isNumOrEmpty(value, -90, 90)) {

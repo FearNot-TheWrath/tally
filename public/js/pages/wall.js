@@ -28,6 +28,7 @@ let cfg = {
   enabled_panels:    ['chores'],
   chores_dwell_sec:  60,
   other_dwell_sec:   15,
+  verse_dwell_sec:   20,
   sleep_start:       '00:00',
   sleep_end:         '00:00',
   sleep_clock_style: 'digital',
@@ -347,6 +348,37 @@ async function renderWeather() {
 }
 
 // ------------------------------------------------------------------
+// Verse render (theme-independent dark slide)
+// ------------------------------------------------------------------
+
+async function renderVerse() {
+  const data = await api.get('/api/wall/verse').catch(() => null);
+  if (!data || !data.verseText) { await renderChores(); return; }
+
+  clear(root);
+  const body = [];
+  if (data.dayName) body.push(el('div', { class: 'verse-eyebrow' }, [data.dayName]));
+  body.push(el('div', { class: 'verse-text' }, [data.verseText]));
+  body.push(el('div', { class: 'verse-rule' }, []));
+  if (data.verseRef) body.push(el('div', { class: 'verse-ref' }, [data.verseRef]));
+
+  const card = el('div', { class: 'verse-card' }, [
+    el('span', { class: 'verse-corner tl' }, []),
+    el('span', { class: 'verse-corner tr' }, []),
+    el('span', { class: 'verse-corner bl' }, []),
+    el('span', { class: 'verse-corner br' }, []),
+    el('div', { class: 'verse-frame' }, []),
+    el('div', { class: 'verse-body' }, body),
+  ]);
+  if (data.gospelRef) {
+    card.appendChild(el('div', { class: 'verse-footer' }, [`Today's Gospel · ${data.gospelRef}`]));
+  }
+
+  const stage = el('div', { class: 'verse-stage' }, [card]);
+  root.appendChild(stage);
+}
+
+// ------------------------------------------------------------------
 // Sleep mode
 // ------------------------------------------------------------------
 
@@ -512,6 +544,8 @@ function checkSleep() {
 async function renderPanel() {
   if (rotation.current() === 'weather') {
     await renderWeather();
+  } else if (rotation.current() === 'verse') {
+    await renderVerse();
   } else {
     await renderChores();
   }
@@ -550,7 +584,7 @@ async function loadConfig() {
 
   // /api/wall/config returns enabled_panels as a comma-separated string;
   // normalize to an array of known panel keys (others are not built yet).
-  const KNOWN = new Set(['chores', 'weather']);
+  const KNOWN = new Set(['chores', 'weather', 'verse']);
   const parsed = (typeof data.enabled_panels === 'string'
     ? data.enabled_panels.split(',')
     : Array.isArray(data.enabled_panels) ? data.enabled_panels : ['chores']
@@ -558,6 +592,7 @@ async function loadConfig() {
   cfg.enabled_panels = parsed.length ? parsed : ['chores'];
   cfg.chores_dwell_sec  = data.chores_dwell_sec  || 60;
   cfg.other_dwell_sec   = data.other_dwell_sec   || 15;
+  cfg.verse_dwell_sec   = data.verse_dwell_sec   || 20;
   cfg.sleep_start       = data.sleep_start       || '00:00';
   cfg.sleep_end         = data.sleep_end         || '00:00';
   cfg.sleep_clock_style = data.sleep_clock_style || 'digital';
@@ -565,6 +600,7 @@ async function loadConfig() {
   rotation = new Rotation(cfg.enabled_panels, {
     choresDwellSec: cfg.chores_dwell_sec,
     otherDwellSec:  cfg.other_dwell_sec,
+    dwellOverrides: { verse: cfg.verse_dwell_sec },
   });
 }
 

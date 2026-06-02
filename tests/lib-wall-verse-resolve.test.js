@@ -48,3 +48,14 @@ test('resolveVerse falls back to curated when the daily file is missing', () => 
   const out = resolveVerse({ generatedPath: join(dir, 'nope.json'), fallbackPath: fb, todayIso: '2026-06-01' });
   assert.equal(out.source, 'curated');
 });
+
+test('resolveVerse returns an empty curated verse when the fallback file is missing', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'verse-'));
+  const out = resolveVerse({
+    generatedPath: join(dir, 'nope-generated.json'),
+    fallbackPath: join(dir, 'nope-fallback.json'),
+    todayIso: '2026-06-01',
+  });
+  assert.equal(out.source, 'curated');
+  assert.equal(out.verseText, '');
+});

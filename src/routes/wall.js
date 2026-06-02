@@ -1,4 +1,6 @@
 import { Router } from 'express';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 import { today, weekStart } from '../lib/dates.js';
 import { calcWeekPoints } from '../lib/points.js';
 import { currentStreak, isOnFreeze } from '../lib/streak.js';
@@ -6,6 +8,11 @@ import { wallBus } from '../lib/events.js';
 import { runPayoutIfDue } from '../lib/payout.js';
 import { sweepForfeits } from '../lib/forfeit.js';
 import { fetchOpenMeteo, parseForecast } from '../lib/wall/open-meteo.js';
+import { resolveVerse } from '../lib/wall/verse-resolve.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const VERSE_GENERATED = join(__dirname, '..', '..', 'public', 'generated', 'wall-verse.json');
+const VERSE_FALLBACK  = join(__dirname, '..', '..', 'data', 'verses-fallback.json');
 
 // In-memory weather cache. Tied to the module so it persists for the process lifetime.
 let weatherCache = null;       // { key, data, fetchedAt }
@@ -57,6 +64,7 @@ export function wallRoutes() {
       enabled_panels:    s.wall_enabled_panels || 'chores',
       chores_dwell_sec:  Number(s.wall_chores_dwell_sec || 60),
       other_dwell_sec:   Number(s.wall_other_dwell_sec || 15),
+      verse_dwell_sec:   Number(s.wall_verse_dwell_sec || 20),
       weather_lat:       s.wall_weather_lat || '',
       weather_lon:       s.wall_weather_lon || '',
       weather_unit:      s.wall_weather_unit || 'F',
@@ -64,6 +72,14 @@ export function wallRoutes() {
       sleep_end:         s.wall_sleep_end || '06:00',
       sleep_clock_style: s.wall_sleep_clock_style || 'analog-minimal',
     });
+  });
+
+  r.get('/wall/verse', (req, res) => {
+    res.json(resolveVerse({
+      generatedPath: VERSE_GENERATED,
+      fallbackPath: VERSE_FALLBACK,
+      todayIso: today(),
+    }));
   });
 
   r.get('/wall/weather', async (req, res) => {

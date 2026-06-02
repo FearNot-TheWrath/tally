@@ -6,6 +6,10 @@ import { dirname, join } from 'node:path';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
 
+// Build-time only. Reads docs/nabre.json (the full NABRE bible, not committed to
+// keep the repo light; obtain it separately) and writes the committed runtime
+// artifact data/verses-fallback.json. The running app never loads docs/nabre.json.
+
 // Reference list: { book, chapter, start, end?, ref } where `ref` is the display
 // string. `book` must match a book name in docs/nabre.json exactly.
 const REFS = [
