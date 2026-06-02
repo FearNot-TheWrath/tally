@@ -52,6 +52,21 @@ test('Rotation: nextDwellMs returns the appropriate dwell for current panel', ()
   assert.equal(r.nextDwellMs(), 15_000);
 });
 
+test('nextDwellMs honors a per-panel dwell override', () => {
+  const r = new Rotation(['chores', 'weather', 'verse'], {
+    choresDwellSec: 60, otherDwellSec: 15, dwellOverrides: { verse: 20 },
+  });
+  // advance to first other (weather): no override -> 15s
+  r.advance(() => false);
+  assert.equal(r.current(), 'weather');
+  assert.equal(r.nextDwellMs(), 15000);
+  // back to chores, then to verse: override -> 20s
+  r.advance(() => false);
+  r.advance(() => false);
+  assert.equal(r.current(), 'verse');
+  assert.equal(r.nextDwellMs(), 20000);
+});
+
 test('Rotation: setEnabled swaps the panel list and resets to chores if missing', () => {
   const r = new Rotation(['chores','weather','calendar']);
   r.advance(() => false);                  // -> weather
