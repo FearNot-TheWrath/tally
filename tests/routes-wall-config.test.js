@@ -9,7 +9,7 @@ test('GET /api/wall/config returns the wall-public settings (no auth required)',
   const res = await request(app).get('/api/wall/config');
   assert.equal(res.status, 200);
   const c = res.body;
-  assert.equal(c.enabled_panels, 'chores,weather,calendar,verse-fact');
+  assert.equal(c.enabled_panels, 'chores,weather,verse');
   assert.equal(c.chores_dwell_sec, 60);
   assert.equal(c.other_dwell_sec, 15);
   assert.equal(c.weather_unit, 'F');

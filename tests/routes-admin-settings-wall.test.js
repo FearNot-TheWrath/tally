@@ -89,3 +89,23 @@ test('PATCH wall_weather_radar accepts on/off and rejects junk', async () => {
   assert.equal((await agent.patch('/api/admin/settings/wall_weather_radar').send({ value: 'on' })).status, 200);
   assert.equal((await agent.patch('/api/admin/settings/wall_weather_radar').send({ value: 'maybe' })).status, 400);
 });
+
+test('PATCH wall_verse_dwell_sec accepts an int in range', async () => {
+  const db = freshDb(); const app = freshApp(db);
+  const agent = await asParent(app, db);
+  const r = await agent.patch('/api/admin/settings/wall_verse_dwell_sec').send({ value: '25' });
+  assert.equal(r.status, 200);
+  assert.equal(r.body.setting.value, '25');
+});
+test('PATCH wall_verse_dwell_sec rejects out-of-range', async () => {
+  const db = freshDb(); const app = freshApp(db);
+  const agent = await asParent(app, db);
+  const r = await agent.patch('/api/admin/settings/wall_verse_dwell_sec').send({ value: '999' });
+  assert.equal(r.status, 400);
+});
+test('PATCH wall_enabled_panels accepts verse', async () => {
+  const db = freshDb(); const app = freshApp(db);
+  const agent = await asParent(app, db);
+  const r = await agent.patch('/api/admin/settings/wall_enabled_panels').send({ value: 'chores,weather,verse' });
+  assert.equal(r.status, 200);
+});
