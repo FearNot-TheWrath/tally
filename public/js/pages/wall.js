@@ -44,19 +44,10 @@ let sleepClockTimer = null;
 let sleepDriftTimer = null;
 let inSleep         = false;
 
-// Leaflet radar backdrop state. Torn down whenever a panel re-renders so the
-// animation interval and map instance never stack across rotations.
-let radarMap   = null;
-let radarTimer = null;
-
 // Diagnostics (visible only with ?debug in the URL).
-const BUILD_TAG = 'wx-2026-06-01d';
+const BUILD_TAG = 'wx-2026-06-01e';
 let lastWallError = '';
 let nextSwitchAt = 0;
-function teardownRadar() {
-  if (radarTimer) { clearInterval(radarTimer); radarTimer = null; }
-  if (radarMap)   { try { radarMap.remove(); } catch { /* already gone */ } radarMap = null; }
-}
 
 // ------------------------------------------------------------------
 // Theme
@@ -91,7 +82,6 @@ function fmtHHMM(d) {
 // ------------------------------------------------------------------
 
 async function renderChores() {
-  teardownRadar();
   const data = await api.get('/api/wall').catch(() => null);
   if (!data) {
     if (lastDataJson === null) {
@@ -247,59 +237,7 @@ async function renderChores() {
 // Weather render
 // ------------------------------------------------------------------
 
-// Build the Leaflet radar backdrop: faint dark base map, animated RainViewer
-// precipitation, and a pulsing "you are here" dot, centered on the home coords.
-// Decorative and fully self-healing: any fetch/Leaflet error just leaves the
-// gradient panel as-is. RainViewer frames are fetched client-side (CORS-open,
-// no API key); the map is non-interactive.
-async function initRadar(host, r) {
- try {
-  if (!window.L || !host) return;
-  const lat = Number(r.lat), lon = Number(r.lon), zoom = Number(r.zoom) || 8;
-  if (!isFinite(lat) || !isFinite(lon)) return;
-
-  const map = L.map(host, {
-    zoomControl: false, attributionControl: false,
-    dragging: false, scrollWheelZoom: false, doubleClickZoom: false,
-    boxZoom: false, keyboard: false, touchZoom: false, inertia: false,
-    zoomAnimation: false, fadeAnimation: false,
-  });
-  radarMap = map;
-  map.setView([lat, lon], zoom);
-
-  // Faint dark base for geographic context (state/county outlines).
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}.png', {
-    subdomains: 'abcd', opacity: 0.5,
-  }).addTo(map);
-
-  // Pulsing "you are here" dot at home.
-  L.marker([lat, lon], {
-    interactive: false, keyboard: false,
-    icon: L.divIcon({ className: 'wall-radar-dot', html: '<span class="dot"></span>', iconSize: [16, 16] }),
-  }).addTo(map);
-
-  // A SINGLE latest precipitation frame from RainViewer (no animation). Animating
-  // the 13-frame loop pegged a core on the 1GB Pi 3B; a static frame keeps the
-  // look with almost no ongoing CPU. The frame still refreshes on its own because
-  // the weather panel rebuilds each time it rotates back in (~45s).
-  try {
-    const res = await fetch('https://api.rainviewer.com/public/weather-maps.json');
-    const j = await res.json();
-    const past = j.radar?.past || [];
-    const frame = past[past.length - 1]; // most recent observed frame
-    if (!frame || radarMap !== map) return; // torn down while awaiting
-    // RainViewer radar is only generated to zoom 7; cap native fetches there
-    // (Leaflet upscales any higher map zoom) so we never hit the placeholder tile.
-    L.tileLayer(`${j.host}${frame.path}/256/{z}/{x}/{y}/4/1_1.png`,
-      { opacity: 0.9, maxNativeZoom: 7, maxZoom: 12 }).addTo(map);
-  } catch { /* radar is decorative; ignore */ }
-
-  setTimeout(() => { try { map.invalidateSize(); } catch { /* gone */ } }, 60);
- } catch (e) { console.error('[wall] radar init failed:', e); }
-}
-
 async function renderWeather() {
-  teardownRadar();
   const data = await api.get('/api/wall/weather').catch(() => null);
   if (!data || data.skip) { await renderChores(); return; }
 
@@ -363,13 +301,18 @@ async function renderWeather() {
     el('div', { class: 'k' }, [k]), el('div', { class: 'v' }, [v]),
   ])));
 
-  const radarEnabled = !!(data.radar && data.radar.enabled && window.L);
-  const radarHost = radarEnabled ? el('div', { class: 'weather-radar', id: 'wall-radar' }, []) : null;
-  const radarEls = radarEnabled ? [
-    radarHost,
-    el('div', { class: 'weather-radar-tag' }, ['◗ Live radar']),
-    el('div', { class: 'weather-radar-attr' }, ['CARTO · RainViewer']),
-  ] : [];
+  const radarEnabled = !!(data.radar && data.radar.enabled);
+  const radarEls = [];
+  if (radarEnabled) {
+    // Server-rendered animated radar (RainViewer + dark map, baked into a WebP
+    // refreshed every ~5 min). The wall just plays the finished image over the
+    // gradient — no Leaflet, no blend — so it stays light enough for the Pi.
+    // The cb bucket changes every 5 min to pull the freshly generated frame.
+    const cb = Math.floor(Date.now() / 300000);
+    const bg = el('div', { class: 'weather-radar' }, []);
+    bg.style.backgroundImage = `url('/generated/wall-radar.webp?cb=${cb}')`;
+    radarEls.push(bg, el('div', { class: 'weather-radar-tag' }, ['◗ Live radar']));
+  }
 
   root.appendChild(el('div', { class: `wall-page wall-page-weather weather-theme-${theme}` }, [
     ...radarEls,
@@ -391,8 +334,6 @@ async function renderWeather() {
       metrics,
     ]),
   ]));
-
-  if (radarEnabled) initRadar(radarHost, data.radar);
 }
 
 // ------------------------------------------------------------------
@@ -500,7 +441,6 @@ function enterSleep() {
   if (inSleep) return;
   inSleep = true;
 
-  teardownRadar();
   if (rotationTimer) { clearTimeout(rotationTimer); rotationTimer = null; }
 
   document.body.style.background = '#000';
