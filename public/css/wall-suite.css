@@ -86,6 +86,17 @@
 .weather-theme-snow .weather-curve polyline { stroke: rgba(15,23,42,0.9); }
 .weather-theme-snow .weather-metrics { background: rgba(255,255,255,0.35); }
 
+/* Readable text per theme regardless of the system light/dark setting:
+   dark text on the light/bright gradients, white text on the dark ones
+   (otherwise the night themes show invisible dark-on-dark text). */
+.weather-theme-clear-day,
+.weather-theme-partly-cloudy { color: #0F172A; }
+.weather-theme-clear-night,
+.weather-theme-overcast,
+.weather-theme-rain,
+.weather-theme-thunderstorm,
+.weather-theme-fog { color: #ffffff; }
+
 /* Sleep face: drifting dim clock rendered inside #wall. */
 #wall .sleep-face {
   position: absolute;
