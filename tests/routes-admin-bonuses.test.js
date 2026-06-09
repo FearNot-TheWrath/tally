@@ -135,3 +135,76 @@ test('admin bonuses endpoints reject non-parent', async () => {
   const r2 = await kidAgent.post('/api/admin/bonuses').send({ title: 'X', points: 5 });
   assert.equal(r2.status, 403);
 });
+
+test('POST /api/admin/bonuses with min/max/days seeds current_points and ripens_from', async () => {
+  const db = freshDb();
+  const app = freshApp(db);
+  const { agent } = await asParent(app, db);
+  const r = await agent.post('/api/admin/bonuses').send({
+    title: 'Wash car', points: 10, anti_cheat: 'honor',
+    min_points: 3, max_points: 18, days_to_ripen: 5,
+  });
+  assert.equal(r.status, 200);
+  const row = db.prepare("SELECT min_points, max_points, current_points, days_to_ripen, ripens_from FROM chores WHERE title='Wash car'").get();
+  assert.equal(row.min_points, 3);
+  assert.equal(row.max_points, 18);
+  assert.equal(row.current_points, 3);
+  assert.equal(row.days_to_ripen, 5);
+  assert.ok(row.ripens_from);
+});
+
+test('POST /api/admin/bonuses rejects max_points < min_points', async () => {
+  const db = freshDb();
+  const app = freshApp(db);
+  const { agent } = await asParent(app, db);
+  const r = await agent.post('/api/admin/bonuses').send({
+    title: 'Bad', points: 5, anti_cheat: 'honor',
+    min_points: 20, max_points: 5,
+  });
+  assert.equal(r.status, 400);
+  assert.match(r.body.error, /max_points/);
+});
+
+test('POST /api/admin/bonuses rejects days_to_ripen out of 1..30', async () => {
+  const db = freshDb();
+  const app = freshApp(db);
+  const { agent } = await asParent(app, db);
+  const a = await agent.post('/api/admin/bonuses').send({ title: 'A', points: 1, min_points: 1, max_points: 2, days_to_ripen: 0 });
+  assert.equal(a.status, 400);
+  const b = await agent.post('/api/admin/bonuses').send({ title: 'B', points: 1, min_points: 1, max_points: 2, days_to_ripen: 31 });
+  assert.equal(b.status, 400);
+});
+
+test('PATCH /api/admin/bonuses changing min_points resets current_points and ripens_full_on', async () => {
+  const db = freshDb();
+  const app = freshApp(db);
+  const { agent } = await asParent(app, db);
+  const created = (await agent.post('/api/admin/bonuses').send({
+    title: 'Ramp', points: 10, anti_cheat: 'honor',
+    min_points: 1, max_points: 10, days_to_ripen: 5,
+  })).body.bonus;
+  // Pretend the sweep ripened it part-way and stamped full-on.
+  db.prepare("UPDATE chores SET current_points = 8, ripens_full_on = date('now','localtime') WHERE id = ?").run(created.id);
+  const r = await agent.patch(`/api/admin/bonuses/${created.id}`).send({ min_points: 4, max_points: 12 });
+  assert.equal(r.status, 200);
+  const row = db.prepare('SELECT current_points, ripens_full_on FROM chores WHERE id = ?').get(created.id);
+  assert.equal(row.current_points, 4);
+  assert.equal(row.ripens_full_on, null);
+});
+
+test('GET /api/admin/bonuses exposes ripening fields per bonus', async () => {
+  const db = freshDb();
+  const app = freshApp(db);
+  const { agent } = await asParent(app, db);
+  await agent.post('/api/admin/bonuses').send({
+    title: 'R', points: 5, anti_cheat: 'honor',
+    min_points: 2, max_points: 15, days_to_ripen: 7,
+  });
+  const r = await agent.get('/api/admin/bonuses');
+  assert.equal(r.status, 200);
+  const b = r.body.bonuses.find(x => x.title === 'R');
+  assert.equal(b.min_points, 2);
+  assert.equal(b.max_points, 15);
+  assert.equal(b.current_points, 2);
+  assert.equal(b.days_to_ripen, 7);
+});
