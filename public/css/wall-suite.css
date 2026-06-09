@@ -50,8 +50,8 @@
 .weather-hours { display: flex; justify-content: space-between; padding: 0.4vh 1vw 0;
   font-size: 1.3vh; opacity: 0.9; text-shadow: 0 1px 3px rgba(0,0,0,.3); }
 
-/* Metrics strip */
-.weather-metrics { margin-top: 0; display: flex; z-index: 1; position: relative;
+/* Metrics strip — pinned to the bottom of the weather panel as a full-width footer. */
+.weather-metrics { display: flex; z-index: 1; position: relative;
   background: rgba(0,0,0,0.18); border-top: 1px solid rgba(255,255,255,0.22); }
 .weather-metrics .m { flex: 1; text-align: center; padding: 1.2vh 4px;
   border-right: 1px solid rgba(255,255,255,0.16); }

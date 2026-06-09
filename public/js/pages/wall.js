@@ -398,16 +398,15 @@ async function renderWeather() {
             ]),
           ]),
           ...curveEls,
-          metrics,
         ]);
-        // Only wrap in a two-column grid when calendar data is actually
-        // present. Otherwise let .weather-current sit directly in the layer
-        // so the middle row is not a giant empty block.
+        // hero + curve at the top; metrics bar moves below as its own sibling so
+        // it can sit pinned to the bottom of the panel.
         return hasCal
           ? el('div', { class: 'weather-body has-calendar' }, [current, buildCalendarOverlay(calData)])
           : current;
       })(),
       el('div', { class: 'weather-fc' }, heroFc),
+      metrics,
     ]),
   ]));
 }
