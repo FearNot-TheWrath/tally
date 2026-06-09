@@ -784,6 +784,78 @@ async function renderWall(host) {
     ]),
   ]);
   host.appendChild(sleepCard);
+
+  // ------- Card 5: Calendar -------
+  const calCard = el('div', { class: 'card' }, [
+    el('h4', { style: { marginBottom: 'var(--s3)' } }, ['Calendar']),
+    el('div', { id: 'cal-card-body', class: 'muted' }, ['Loading…']),
+  ]);
+  host.appendChild(calCard);
+
+  const url = new URL(location.href);
+  const status = url.searchParams.get('wall_calendar_status');
+  const errCode = url.searchParams.get('wall_calendar_error');
+  if (status === 'connected') alert('Google Calendar connected.');
+  if (errCode) alert('Google Calendar connect failed: ' + errCode);
+  if (status || errCode) {
+    url.searchParams.delete('wall_calendar_status');
+    url.searchParams.delete('wall_calendar_error');
+    history.replaceState({}, '', url.toString());
+  }
+
+  const calBody = calCard.querySelector('#cal-card-body');
+  try {
+    const r = await api.get('/api/admin/calendar/list');
+    calBody.innerHTML = '';
+    if (!r.connected) {
+      calBody.appendChild(el('button', {
+        class: 'btn btn-primary',
+        onClick: () => { window.location.href = '/api/auth/google/start'; },
+      }, ['Connect Google Calendar']));
+      calBody.appendChild(el('div', { class: 'muted', style: { fontSize: '0.78rem', marginTop: '8px' } }, [
+        'Requires GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env (see README).',
+      ]));
+    } else {
+      const selectedSet = new Set((r.selected_ids || '').split(',').map(s => s.trim()).filter(Boolean));
+      calBody.appendChild(el('div', { style: { marginBottom: 'var(--s3)' } }, ['Connected to Google.']));
+      const checks = r.calendars.map(c => {
+        const cb = el('input', {
+          type: 'checkbox',
+          checked: selectedSet.has(c.id) ? 'checked' : null,
+          onChange: async (e) => {
+            if (e.target.checked) selectedSet.add(c.id); else selectedSet.delete(c.id);
+            const value = [...selectedSet].join(',');
+            try {
+              await api.patch('/api/admin/settings/wall_calendar_selected_ids', { value });
+            } catch (err) {
+              alert('Save failed: ' + err.message);
+              e.target.checked = !e.target.checked;
+            }
+          },
+        });
+        return el('label', { class: 'row', style: { gap: '8px', cursor: 'pointer', marginBottom: '6px' } }, [
+          cb,
+          el('span', { style: { width: '12px', height: '12px', borderRadius: '50%', background: c.backgroundColor, display: 'inline-block' } }, []),
+          el('span', {}, [c.summary]),
+          c.primary ? el('span', { class: 'muted', style: { fontSize: '0.75rem' } }, ['(primary)']) : null,
+        ].filter(Boolean));
+      });
+      calBody.appendChild(el('div', { class: 'stack' }, checks));
+      calBody.appendChild(el('div', { class: 'row spaced', style: { marginTop: 'var(--s3)' } }, [
+        el('button', { class: 'btn btn-ghost', onClick: async () => {
+          try { await api.post('/api/admin/calendar/refresh-list'); renderWall(host); }
+          catch (e) { alert('Refresh failed: ' + e.message); }
+        } }, ['Refresh calendar list']),
+        el('button', { class: 'btn btn-danger', onClick: async () => {
+          if (!confirm('Disconnect Google Calendar?')) return;
+          try { await api.post('/api/admin/calendar/disconnect'); renderWall(host); }
+          catch (e) { alert('Disconnect failed: ' + e.message); }
+        } }, ['Disconnect']),
+      ]));
+    }
+  } catch (e) {
+    calBody.textContent = 'Failed to load: ' + e.message;
+  }
 }
 
 /* ───── Settings tab ───── */
