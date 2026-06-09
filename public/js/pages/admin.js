@@ -931,6 +931,9 @@ async function renderBonuses(host) {
     anti_cheat: 'honor',
     description: '',
     photo_prompt: '',
+    min_points: 5,
+    max_points: 15,
+    days_to_ripen: 5,
   };
 
   const { people } = await api.get('/api/admin/people');
@@ -966,6 +969,21 @@ async function renderBonuses(host) {
       el('label', {}, ['Points']),
       el('input', { type: 'number', value: form.points, min: '1', onInput: e => { form.points = Number(e.target.value); updateBonusCost(); } }),
       costLine,
+    ]),
+    el('div', { class: 'form-field' }, [
+      el('label', {}, ['Min points (starting value when posted)']),
+      el('input', { type: 'number', min: '1', value: form.min_points, onInput: e => form.min_points = Number(e.target.value) }),
+    ]),
+    el('div', { class: 'form-field' }, [
+      el('label', {}, ['Max points (peak value before bonus expires)']),
+      el('input', { type: 'number', min: '1', value: form.max_points, onInput: e => form.max_points = Number(e.target.value) }),
+    ]),
+    el('div', { class: 'form-field' }, [
+      el('label', {}, ['Days to ripen (min to max)']),
+      el('input', { type: 'number', min: '1', max: '30', value: form.days_to_ripen, onInput: e => form.days_to_ripen = Number(e.target.value) }),
+      el('div', { class: 'muted', style: { fontSize: '0.78rem', marginTop: '4px' } }, [
+        'Set min == max to disable ripening (bonus stays at that value).',
+      ]),
     ]),
     el('div', { class: 'form-field' }, [
       el('label', {}, ['Anti-cheat']),
@@ -1031,13 +1049,20 @@ function renderBonusRow(b, host) {
     }, ['Cancel']));
   }
 
+  const hasRipen = b.min_points != null && b.max_points != null && b.max_points > b.min_points;
+  const cur = b.current_points ?? b.points;
+  const ripeLine = hasRipen
+    ? `Ripening: ${cur} now · ${b.min_points} -> ${b.max_points} over ${b.days_to_ripen}d${b.ripens_full_on ? ' · expires after today' : ''}`
+    : `Fixed at ${b.points}`;
+
   return el('div', { class: 'review-row' }, [
     el('div', { class: 'row spaced' }, [
       el('div', {}, [
         el('div', { style: { fontWeight: 600 } }, [b.title]),
         el('div', { class: 'muted', style: { fontSize: '0.78rem' } }, [
-          `+${b.points} pts · ${b.anti_cheat}${b.description ? ' · ' + b.description : ''}`,
+          `+${cur} pts · ${b.anti_cheat}${b.description ? ' · ' + b.description : ''}`,
         ]),
+        el('div', { class: 'muted', style: { fontSize: '0.72rem', marginTop: '2px' } }, [ripeLine]),
       ]),
       el('span', { class: 'pill ' + statusClass }, [statusText]),
     ]),

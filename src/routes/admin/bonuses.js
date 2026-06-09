@@ -5,7 +5,35 @@ import { sendToPerson } from '../../lib/push.js';
 
 const ALLOWED_FIELDS = [
   'title', 'description', 'points', 'anti_cheat', 'photo_prompt',
+  'min_points', 'max_points', 'days_to_ripen',
 ];
+
+function todayIso() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function validateRipeningFields(data) {
+  if (data.min_points !== undefined) {
+    const n = Number(data.min_points);
+    if (!Number.isInteger(n) || n < 1) return 'min_points must be an integer >= 1';
+    data.min_points = n;
+  }
+  if (data.max_points !== undefined) {
+    const n = Number(data.max_points);
+    if (!Number.isInteger(n) || n < 1) return 'max_points must be an integer >= 1';
+    data.max_points = n;
+  }
+  if (data.min_points !== undefined && data.max_points !== undefined && data.max_points < data.min_points) {
+    return 'max_points must be >= min_points';
+  }
+  if (data.days_to_ripen !== undefined) {
+    const n = Number(data.days_to_ripen);
+    if (!Number.isInteger(n) || n < 1 || n > 30) return 'days_to_ripen must be an integer 1..30';
+    data.days_to_ripen = n;
+  }
+  return null;
+}
 
 export function adminBonusesRoutes() {
   const r = Router();
@@ -16,6 +44,8 @@ export function adminBonusesRoutes() {
     const rows = db.prepare(`
       SELECT c.id, c.title, c.description, c.points, c.anti_cheat,
              c.photo_prompt, c.created_at,
+             c.min_points, c.max_points, c.current_points, c.days_to_ripen,
+             c.ripens_from, c.ripens_full_on,
              a.id AS assignment_id,
              a.person_id AS claimed_by,
              a.status AS assignment_status,
@@ -43,6 +73,12 @@ export function adminBonusesRoutes() {
     if (data.anti_cheat && !['honor', 'photo', 'approval'].includes(data.anti_cheat)) {
       return res.status(400).json({ error: 'anti_cheat must be honor, photo, or approval' });
     }
+    const err = validateRipeningFields(data);
+    if (err) return res.status(400).json({ error: err });
+    if (data.min_points !== undefined) {
+      data.current_points = data.min_points;
+      data.ripens_from    = todayIso();
+    }
 
     const cols = ['kind', 'recurs', 'default_assignees', ...Object.keys(data)];
     const vals = ['bonus', 'none', '', ...Object.values(data)];
@@ -68,6 +104,13 @@ export function adminBonusesRoutes() {
     const data = pickFields(req.body || {});
     if (Object.keys(data).length === 0) {
       return res.status(400).json({ error: 'nothing to update' });
+    }
+    const err = validateRipeningFields(data);
+    if (err) return res.status(400).json({ error: err });
+    if (data.min_points !== undefined || data.max_points !== undefined) {
+      if (data.min_points !== undefined) data.current_points = data.min_points;
+      data.ripens_from    = todayIso();
+      data.ripens_full_on = null;
     }
     const sets = Object.keys(data).map(k => `${k} = ?`).join(', ');
     const bonus = db.prepare(`
