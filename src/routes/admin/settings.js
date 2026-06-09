@@ -29,6 +29,7 @@ const EDITABLE_KEYS = new Set([
   'wall_weather_dwell_sec',
   'wall_calendar_dwell_sec',
   'wall_weather_location',
+  'wall_calendar_selected_ids',
 ]);
 
 const READABLE_KEYS = new Set([
@@ -123,6 +124,9 @@ export function adminSettingsRoutes() {
     // wall_weather_location: any string up to 100 chars, server resolves it on save (Task 3).
     if (key === 'wall_weather_location' && (typeof value !== 'string' || value.length > 100)) {
       return res.status(400).json({ error: 'wall_weather_location must be a string up to 100 chars' });
+    }
+    if (key === 'wall_calendar_selected_ids' && (typeof value !== 'string' || value.length > 4096)) {
+      return res.status(400).json({ error: 'wall_calendar_selected_ids must be a string up to 4096 chars' });
     }
     db.prepare(`
       INSERT INTO settings (key, value) VALUES (?, ?)

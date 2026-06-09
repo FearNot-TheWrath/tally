@@ -169,3 +169,21 @@ test('PATCH wall_weather_location with empty string clears lat/lon', async () =>
   assert.equal(db.prepare("SELECT value FROM settings WHERE key='wall_weather_lat'").get().value, '');
   assert.equal(db.prepare("SELECT value FROM settings WHERE key='wall_weather_lon'").get().value, '');
 });
+
+test('PATCH wall_calendar_selected_ids accepts short strings, rejects very long', async () => {
+  const db = freshDb(); const app = freshApp(db);
+  const agent = await asParent(app, db);
+  assert.equal((await agent.patch('/api/admin/settings/wall_calendar_selected_ids').send({ value: '' })).status, 200);
+  assert.equal((await agent.patch('/api/admin/settings/wall_calendar_selected_ids').send({ value: 'a,b,c' })).status, 200);
+  assert.equal((await agent.patch('/api/admin/settings/wall_calendar_selected_ids').send({ value: 'x'.repeat(4097) })).status, 400);
+});
+
+test('GET /api/admin/settings does NOT expose wall_calendar_oauth_refresh or list_cache', async () => {
+  const db = freshDb(); const app = freshApp(db);
+  const agent = await asParent(app, db);
+  db.prepare("UPDATE settings SET value='SECRETSECRET' WHERE key='wall_calendar_oauth_refresh'").run();
+  const r = await agent.get('/api/admin/settings');
+  assert.equal(r.status, 200);
+  assert.equal(r.body.settings.wall_calendar_oauth_refresh, undefined);
+  assert.equal(r.body.settings.wall_calendar_list_cache, undefined);
+});
