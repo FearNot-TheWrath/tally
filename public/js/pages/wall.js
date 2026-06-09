@@ -27,16 +27,16 @@ const WEATHER_ICONS = {
 let cfg = {
   enabled_panels:    ['chores'],
   chores_dwell_sec:  60,
-  other_dwell_sec:   15,
-  verse_dwell_sec:   20,
+  smart_cycle:       true,
+  dwell_by_panel:    { chores: 60, weather: 15, calendar: 15, 'verse-fact': 15, verse: 15 },
   sleep_start:       '00:00',
   sleep_end:         '00:00',
   sleep_clock_style: 'digital',
 };
 
 let rotation = new Rotation(cfg.enabled_panels, {
-  choresDwellSec: cfg.chores_dwell_sec,
-  otherDwellSec:  cfg.other_dwell_sec,
+  dwellByPanel: cfg.dwell_by_panel,
+  smartCycle:   cfg.smart_cycle,
 });
 
 let rotationTimer   = null;
@@ -598,23 +598,28 @@ async function loadConfig() {
 
   // /api/wall/config returns enabled_panels as a comma-separated string;
   // normalize to an array of known panel keys (others are not built yet).
-  const KNOWN = new Set(['chores', 'weather', 'verse']);
+  const KNOWN = new Set(['chores', 'weather', 'calendar', 'verse-fact', 'verse']);
   const parsed = (typeof data.enabled_panels === 'string'
     ? data.enabled_panels.split(',')
     : Array.isArray(data.enabled_panels) ? data.enabled_panels : ['chores']
   ).map(s => String(s).trim()).filter(s => KNOWN.has(s));
   cfg.enabled_panels = parsed.length ? parsed : ['chores'];
-  cfg.chores_dwell_sec  = data.chores_dwell_sec  || 60;
-  cfg.other_dwell_sec   = data.other_dwell_sec   || 15;
-  cfg.verse_dwell_sec   = data.verse_dwell_sec   || 20;
+  cfg.smart_cycle     = data.smart_cycle !== false;
+  const dwellByPanel = {
+    'chores':     Number(data.chores_dwell_sec   || 60),
+    'weather':    Number(data.weather_dwell_sec  || 15),
+    'calendar':   Number(data.calendar_dwell_sec || 15),
+    'verse-fact': Number(data.verse_dwell_sec    || 15),
+    'verse':      Number(data.verse_dwell_sec    || 15), // alias if older code used 'verse'
+  };
+  cfg.dwell_by_panel    = dwellByPanel;
   cfg.sleep_start       = data.sleep_start       || '00:00';
   cfg.sleep_end         = data.sleep_end         || '00:00';
   cfg.sleep_clock_style = data.sleep_clock_style || 'digital';
 
   rotation = new Rotation(cfg.enabled_panels, {
-    choresDwellSec: cfg.chores_dwell_sec,
-    otherDwellSec:  cfg.other_dwell_sec,
-    dwellOverrides: { verse: cfg.verse_dwell_sec },
+    dwellByPanel,
+    smartCycle: cfg.smart_cycle,
   });
 }
 
