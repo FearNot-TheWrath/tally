@@ -209,7 +209,7 @@ export function homeRoutes({ uploadsDir = './uploads' } = {}) {
     const db = req.app.get('db');
     const kidId = req.user.person_id;
     const chore = db.prepare(
-      "SELECT * FROM chores WHERE id = ? AND kind = 'bonus' AND deleted_at IS NULL"
+      "SELECT id, points, min_points, current_points FROM chores WHERE id = ? AND kind = 'bonus' AND deleted_at IS NULL"
     ).get(req.params.id);
     if (!chore) return res.status(404).json({ error: 'Not found' });
 
@@ -223,6 +223,14 @@ export function homeRoutes({ uploadsDir = './uploads' } = {}) {
     if (!row) {
       return res.status(409).json({ error: 'Already claimed' });
     }
+
+    if (chore.min_points != null) {
+      db.prepare(`
+        UPDATE chores SET current_points = min_points, ripens_from = date('now','localtime'),
+          ripens_full_on = NULL WHERE id = ?
+      `).run(chore.id);
+    }
+
     res.json({ ok: true, assignment_id: row.id });
     notifyWall();
   });
