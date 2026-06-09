@@ -407,3 +407,88 @@
   border-radius: var(--r-sm);
   background: var(--card-muted);
 }
+
+/* ── Calendar overlay: two-column weather body ─────────────────────────── */
+.weather-layer { display: grid; grid-template-rows: auto 1fr auto; }
+.weather-layer .wall-header { grid-row: 1; }
+.weather-layer .weather-body { grid-row: 2; }
+.weather-layer .weather-fc  { grid-row: 3; }
+
+.weather-body {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 32px;
+  align-items: center;
+}
+.weather-body.has-calendar {
+  grid-template-columns: 1fr minmax(280px, 32%);
+}
+
+.calendar-overlay {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px;
+  background: rgba(0,0,0,0.18);
+  border-radius: 14px;
+  max-height: 100%;
+  overflow: hidden;
+  position: relative;
+}
+.calendar-overlay .cal-day-label {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.85;
+}
+.calendar-overlay .cal-divider {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.75;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255,255,255,0.15);
+}
+.calendar-overlay .cal-allday-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.calendar-overlay .cal-allday-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  padding: 2px 8px;
+  background: rgba(255,255,255,0.08);
+  border-left: 3px solid var(--dot, #7986CB);
+  border-radius: 4px;
+}
+.calendar-overlay .cal-events {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.calendar-overlay .cal-event {
+  display: grid;
+  grid-template-columns: 62px 10px 1fr;
+  gap: 8px;
+  align-items: center;
+  font-size: 0.92rem;
+}
+.calendar-overlay .cal-event-time {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
+}
+.calendar-overlay .cal-event-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--dot, #7986CB);
+  justify-self: center;
+}
+.calendar-overlay .cal-event-title { font-weight: 500; }
+.calendar-overlay .cal-event-loc   { opacity: 0.7; font-size: 0.82rem; }
+.calendar-overlay .cal-event.is-past { opacity: 0.45; text-decoration: line-through; }
+.calendar-overlay .cal-tomorrow .cal-events,
+.calendar-overlay .cal-tomorrow .cal-allday-strip { opacity: 0.8; }

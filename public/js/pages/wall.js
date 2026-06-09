@@ -260,9 +260,50 @@ async function renderChores() {
 // Weather render
 // ------------------------------------------------------------------
 
+function buildCalendarOverlay(d) {
+  function fmtT(iso) {
+    if (!iso) return '';
+    const dt = new Date(iso);
+    const h = dt.getHours() % 12 || 12;
+    const m = String(dt.getMinutes()).padStart(2, '0');
+    const ampm = dt.getHours() < 12 ? 'AM' : 'PM';
+    return `${h}:${m} ${ampm}`;
+  }
+  const now = Date.now();
+  function evRow(e, isToday) {
+    const past = isToday && e.end && new Date(e.end).getTime() < now;
+    return el('div', { class: 'cal-event' + (past ? ' is-past' : ''), style: { '--dot': e.calendar_color } }, [
+      el('span', { class: 'cal-event-time' }, [fmtT(e.start)]),
+      el('span', { class: 'cal-event-dot' }, []),
+      el('div', { class: 'cal-event-body' }, [
+        el('span', { class: 'cal-event-title' }, [e.summary]),
+        e.location ? el('span', { class: 'cal-event-loc' }, [' · ' + e.location]) : null,
+      ].filter(Boolean)),
+    ]);
+  }
+  function alldayPill(e) {
+    return el('span', { class: 'cal-allday-pill', style: { '--dot': e.calendar_color } }, [e.summary]);
+  }
+  const todayChunk = el('div', { class: 'cal-day cal-today' }, [
+    el('div', { class: 'cal-day-label' }, ['Today']),
+    (d.today.allDay.length > 0) ? el('div', { class: 'cal-allday-strip' }, d.today.allDay.map(alldayPill)) : null,
+    el('div', { class: 'cal-events' }, d.today.timed.map(e => evRow(e, true))),
+  ].filter(Boolean));
+  const tomChunk = (d.tomorrow.allDay.length + d.tomorrow.timed.length > 0)
+    ? el('div', { class: 'cal-day cal-tomorrow' }, [
+        el('div', { class: 'cal-divider' }, ['Tomorrow']),
+        (d.tomorrow.allDay.length > 0) ? el('div', { class: 'cal-allday-strip' }, d.tomorrow.allDay.map(alldayPill)) : null,
+        el('div', { class: 'cal-events' }, d.tomorrow.timed.map(e => evRow(e, false))),
+      ].filter(Boolean))
+    : null;
+  return el('div', { class: 'calendar-overlay' }, [todayChunk, tomChunk].filter(Boolean));
+}
+
 async function renderWeather() {
   const data = await api.get('/api/wall/weather').catch(() => null);
   if (!data || data.skip) { await renderChores(); return; }
+  const calData = await api.get('/api/wall/calendar').catch(() => ({ skip: true }));
+  const hasCal = !calData.skip;
 
   setDayNight(!!data.is_day); // keep the whole wall in sync with day/night
 
@@ -346,17 +387,22 @@ async function renderWeather() {
         el('h2', {}, [`The Lopez House · ${fmtDate(now)}`]),
         el('span', { class: 't' }, [fmtTime(now)]),
       ]),
-      el('div', { class: 'weather-hero' }, [
-        el('div', { class: 'weather-ico' }, [WEATHER_ICONS[theme] || '·']),
-        el('div', { class: 'temp' }, [`${data.current_temp}${u}`]),
-        el('div', {}, [
-          el('div', { class: 'cond' }, [data.condition || '']),
-          el('div', { class: 'sub' }, [`Feels ${data.apparent_temp}${u} · H ${data.today_high}° L ${data.today_low}°`]),
+      el('div', { class: 'weather-body' + (hasCal ? ' has-calendar' : '') }, [
+        el('div', { class: 'weather-current' }, [
+          el('div', { class: 'weather-hero' }, [
+            el('div', { class: 'weather-ico' }, [WEATHER_ICONS[theme] || '·']),
+            el('div', { class: 'temp' }, [`${data.current_temp}${u}`]),
+            el('div', {}, [
+              el('div', { class: 'cond' }, [data.condition || '']),
+              el('div', { class: 'sub' }, [`Feels ${data.apparent_temp}${u} · H ${data.today_high}° L ${data.today_low}°`]),
+            ]),
+          ]),
+          ...curveEls,
+          metrics,
         ]),
-      ]),
-      ...curveEls,
+        hasCal ? buildCalendarOverlay(calData) : null,
+      ].filter(Boolean)),
       el('div', { class: 'weather-fc' }, heroFc),
-      metrics,
     ]),
   ]));
 }
