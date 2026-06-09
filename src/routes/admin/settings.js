@@ -24,6 +24,10 @@ const EDITABLE_KEYS = new Set([
   'wall_sleep_clock_style',
   'wall_weather_radar',
   'wall_verse_dwell_sec',
+  'wall_smart_cycle',
+  'wall_weather_dwell_sec',
+  'wall_calendar_dwell_sec',
+  'wall_weather_location',
 ]);
 
 const READABLE_KEYS = new Set([
@@ -107,6 +111,17 @@ export function adminSettingsRoutes() {
     }
     if (key === 'wall_weather_radar' && value !== 'on' && value !== 'off') {
       return res.status(400).json({ error: 'wall_weather_radar must be on or off' });
+    }
+    if (key === 'wall_smart_cycle' && value !== 'on' && value !== 'off') {
+      return res.status(400).json({ error: 'wall_smart_cycle must be on or off' });
+    }
+    if ((key === 'wall_weather_dwell_sec' || key === 'wall_calendar_dwell_sec' || key === 'wall_verse_dwell_sec')
+        && !isIntInRange(value, 5, 600)) {
+      return res.status(400).json({ error: `${key} must be an integer 5..600` });
+    }
+    // wall_weather_location: any string up to 100 chars, server resolves it on save (Task 3).
+    if (key === 'wall_weather_location' && (typeof value !== 'string' || value.length > 100)) {
+      return res.status(400).json({ error: 'wall_weather_location must be a string up to 100 chars' });
     }
     db.prepare(`
       INSERT INTO settings (key, value) VALUES (?, ?)

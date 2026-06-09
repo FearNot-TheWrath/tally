@@ -109,3 +109,29 @@ test('PATCH wall_enabled_panels accepts verse', async () => {
   const r = await agent.patch('/api/admin/settings/wall_enabled_panels').send({ value: 'chores,weather,verse' });
   assert.equal(r.status, 200);
 });
+
+test('PATCH wall_smart_cycle accepts on and off, rejects others', async () => {
+  const db = freshDb(); const app = freshApp(db);
+  const agent = await asParent(app, db);
+  assert.equal((await agent.patch('/api/admin/settings/wall_smart_cycle').send({ value: 'on' })).status, 200);
+  assert.equal((await agent.patch('/api/admin/settings/wall_smart_cycle').send({ value: 'off' })).status, 200);
+  assert.equal((await agent.patch('/api/admin/settings/wall_smart_cycle').send({ value: 'maybe' })).status, 400);
+});
+
+test('PATCH per-panel dwell sec accepts 5..600 only', async () => {
+  const db = freshDb(); const app = freshApp(db);
+  const agent = await asParent(app, db);
+  for (const key of ['wall_weather_dwell_sec', 'wall_calendar_dwell_sec', 'wall_verse_dwell_sec']) {
+    assert.equal((await agent.patch(`/api/admin/settings/${key}`).send({ value: '30' })).status, 200, key);
+    assert.equal((await agent.patch(`/api/admin/settings/${key}`).send({ value: '4' })).status, 400, key);
+    assert.equal((await agent.patch(`/api/admin/settings/${key}`).send({ value: '601' })).status, 400, key);
+  }
+});
+
+test('PATCH wall_weather_location accepts empty and short strings, rejects very long', async () => {
+  const db = freshDb(); const app = freshApp(db);
+  const agent = await asParent(app, db);
+  assert.equal((await agent.patch('/api/admin/settings/wall_weather_location').send({ value: '' })).status, 200);
+  assert.equal((await agent.patch('/api/admin/settings/wall_weather_location').send({ value: '78634' })).status, 200);
+  assert.equal((await agent.patch('/api/admin/settings/wall_weather_location').send({ value: 'x'.repeat(101) })).status, 400);
+});
