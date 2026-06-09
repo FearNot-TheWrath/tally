@@ -279,6 +279,36 @@ function editChore(chore, host, kids) {
       el('label', {}, ['Points']),
       el('input', { type: 'number', value: data.points, onInput: e => data.points = Number(e.target.value) }),
     ]),
+    // Bonus ripening fields (only visible when kind=bonus).
+    ...(data.kind === 'bonus' ? [
+      el('div', { class: 'form-field' }, [
+        el('label', {}, ['Min points (starting value when posted)']),
+        el('input', {
+          type: 'number', min: '1',
+          value: data.min_points ?? data.points,
+          onInput: e => data.min_points = Number(e.target.value),
+        }),
+      ]),
+      el('div', { class: 'form-field' }, [
+        el('label', {}, ['Max points (cap before bonus disappears)']),
+        el('input', {
+          type: 'number', min: '1',
+          value: data.max_points ?? data.points,
+          onInput: e => data.max_points = Number(e.target.value),
+        }),
+      ]),
+      el('div', { class: 'form-field' }, [
+        el('label', {}, ['Days to ripen']),
+        el('input', {
+          type: 'number', min: '1', max: '30',
+          value: data.days_to_ripen ?? 5,
+          onInput: e => data.days_to_ripen = Number(e.target.value),
+        }),
+        el('div', { class: 'muted', style: { fontSize: '0.78rem', marginTop: '4px' } }, [
+          'How many days the value takes to climb from min to max. After it stays at max for one day, the bonus disappears.',
+        ]),
+      ]),
+    ] : []),
     el('div', { class: 'form-field' }, [
       el('label', {}, ['Weight (effort)']),
       el('select', { onChange: e => data.weight = Number(e.target.value) },
