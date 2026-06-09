@@ -3,6 +3,7 @@ import cookieSession from 'cookie-session';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { authRoutes, meRoute } from './routes/auth.js';
+import { googleAuthRoutes } from './routes/auth/google.js';
 import { homeRoutes } from './routes/home.js';
 import { wallRoutes } from './routes/wall.js';
 import { adminPeopleRoutes } from './routes/admin/people.js';
@@ -33,6 +34,7 @@ export function buildApp({ db, sessionSecret = 'dev-secret', uploadsDir = './upl
 
   app.get('/api/health', (_req, res) => res.json({ ok: true }));
   app.use('/api/auth', authRoutes());
+  app.use('/api/auth', googleAuthRoutes());
   app.use('/api', meRoute());
   app.use('/api', homeRoutes({ uploadsDir }));
   app.use('/api', wallRoutes());
