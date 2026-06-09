@@ -73,3 +73,49 @@ test('Rotation: setEnabled swaps the panel list and resets to chores if missing'
   r.setEnabled(['chores','verse-fact']);
   assert.equal(r.current(), 'chores');
 });
+
+test('Rotation honors per-panel dwellByPanel for nextDwellMs', () => {
+  const r = new Rotation(['chores', 'weather', 'calendar'], {
+    dwellByPanel: { chores: 50, weather: 25, calendar: 12 },
+    smartCycle: true,
+  });
+  assert.equal(r.nextDwellMs(), 50_000);     // on chores
+  r.advance(() => false);                    // -> weather
+  assert.equal(r.nextDwellMs(), 25_000);
+  r.advance(() => false);                    // -> chores (smart cycle)
+  assert.equal(r.nextDwellMs(), 50_000);
+  r.advance(() => false);                    // -> calendar (smart cycle)
+  assert.equal(r.nextDwellMs(), 12_000);
+});
+
+test('Rotation with smartCycle off walks panels in declared order', () => {
+  const r = new Rotation(['chores', 'weather', 'calendar', 'verse-fact'], {
+    dwellByPanel: { chores: 10, weather: 10, calendar: 10, 'verse-fact': 10 },
+    smartCycle: false,
+  });
+  const visited = [];
+  for (let i = 0; i < 8; i++) { visited.push(r.current()); r.advance(() => false); }
+  assert.deepEqual(visited, [
+    'chores', 'weather', 'calendar', 'verse-fact',
+    'chores', 'weather', 'calendar', 'verse-fact',
+  ]);
+});
+
+test('Rotation: missing dwell entry falls back to 15s default', () => {
+  const r = new Rotation(['chores', 'weather'], {
+    dwellByPanel: { chores: 60 },
+    smartCycle: true,
+  });
+  r.advance(() => false);  // -> weather
+  assert.equal(r.nextDwellMs(), 15_000);
+});
+
+test('Rotation: legacy constructor options still work (choresDwellSec/otherDwellSec)', () => {
+  const r = new Rotation(['chores', 'weather'], {
+    choresDwellSec: 60,
+    otherDwellSec:  20,
+  });
+  assert.equal(r.nextDwellMs(), 60_000);
+  r.advance(() => false);
+  assert.equal(r.nextDwellMs(), 20_000);
+});
