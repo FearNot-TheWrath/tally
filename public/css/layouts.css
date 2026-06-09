@@ -408,19 +408,23 @@
   background: var(--card-muted);
 }
 
-/* ── Calendar overlay: two-column weather body ─────────────────────────── */
-.weather-layer { display: grid; grid-template-rows: auto 1fr auto; }
-.weather-layer .wall-header     { grid-row: 1; }
-.weather-layer .weather-current { grid-row: 2; align-self: center; }
-.weather-layer .weather-body    { grid-row: 2; }
-.weather-layer .weather-fc      { grid-row: 3; }
-
-/* The two-column body only exists when calendar data is present. */
+/* ── Calendar overlay: two-column body, only when calendar data present ── */
+/* .weather-layer keeps its existing flex column from wall-suite.css. */
+/* When calendar is present, .weather-body is a flex ROW sibling that holds
+   .weather-current on the left and .calendar-overlay on the right. */
 .weather-body.has-calendar {
-  display: grid;
-  grid-template-columns: 1fr minmax(280px, 32%);
-  gap: 32px;
-  align-items: center;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 24px;
+  flex: 1;
+  min-height: 0;
+}
+.weather-body.has-calendar .weather-current { flex: 1; min-width: 0; }
+.weather-body.has-calendar .calendar-overlay {
+  width: 32%;
+  min-width: 280px;
+  max-width: 360px;
 }
 
 .calendar-overlay {
