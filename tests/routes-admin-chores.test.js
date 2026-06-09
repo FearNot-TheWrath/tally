@@ -103,3 +103,54 @@ test('chore POST/PATCH accepts is_school_work', async () => {
   assert.equal(p.status, 200);
   assert.equal(p.body.chore.is_school_work, 0);
 });
+
+test('POST bonus with min/max/days seeds current_points=min and ripens_from=today', async () => {
+  const db = freshDb(); const app = freshApp(db);
+  const agent = await asParent(app, db);
+  const r = await agent.post('/api/admin/chores').send({
+    title: 'Wash car', kind: 'bonus', points: 5,
+    min_points: 2, max_points: 12, days_to_ripen: 5,
+  });
+  assert.equal(r.status, 200);
+  const row = db.prepare("SELECT min_points, max_points, current_points, days_to_ripen, ripens_from FROM chores WHERE title='Wash car'").get();
+  assert.equal(row.min_points, 2);
+  assert.equal(row.max_points, 12);
+  assert.equal(row.current_points, 2);
+  assert.equal(row.days_to_ripen, 5);
+  assert.ok(row.ripens_from);
+});
+
+test('POST rejects max_points < min_points', async () => {
+  const db = freshDb(); const app = freshApp(db);
+  const agent = await asParent(app, db);
+  const r = await agent.post('/api/admin/chores').send({
+    title: 'Bad', kind: 'bonus', points: 5,
+    min_points: 10, max_points: 2,
+  });
+  assert.equal(r.status, 400);
+  assert.match(r.body.error, /max_points/);
+});
+
+test('POST rejects days_to_ripen outside 1..30', async () => {
+  const db = freshDb(); const app = freshApp(db);
+  const agent = await asParent(app, db);
+  const a = await agent.post('/api/admin/chores').send({ title: 'A', kind: 'bonus', points: 1, min_points: 1, max_points: 2, days_to_ripen: 0 });
+  assert.equal(a.status, 400);
+  const b = await agent.post('/api/admin/chores').send({ title: 'B', kind: 'bonus', points: 1, min_points: 1, max_points: 2, days_to_ripen: 31 });
+  assert.equal(b.status, 400);
+});
+
+test('PATCH bonus changing min resets current_points and ripens_from', async () => {
+  const db = freshDb(); const app = freshApp(db);
+  const agent = await asParent(app, db);
+  const created = (await agent.post('/api/admin/chores').send({
+    title: 'C', kind: 'bonus', points: 1, min_points: 1, max_points: 10, days_to_ripen: 5,
+  })).body.chore;
+  // Manually advance current_points as if a sweep had ripened it.
+  db.prepare("UPDATE chores SET current_points = 6 WHERE id = ?").run(created.id);
+  const r = await agent.patch(`/api/admin/chores/${created.id}`).send({ min_points: 3, max_points: 12 });
+  assert.equal(r.status, 200);
+  const row = db.prepare('SELECT current_points, ripens_full_on FROM chores WHERE id = ?').get(created.id);
+  assert.equal(row.current_points, 3);
+  assert.equal(row.ripens_full_on, null);
+});
