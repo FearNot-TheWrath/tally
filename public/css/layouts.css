@@ -410,18 +410,17 @@
 
 /* ── Calendar overlay: two-column weather body ─────────────────────────── */
 .weather-layer { display: grid; grid-template-rows: auto 1fr auto; }
-.weather-layer .wall-header { grid-row: 1; }
-.weather-layer .weather-body { grid-row: 2; }
-.weather-layer .weather-fc  { grid-row: 3; }
+.weather-layer .wall-header     { grid-row: 1; }
+.weather-layer .weather-current { grid-row: 2; align-self: center; }
+.weather-layer .weather-body    { grid-row: 2; }
+.weather-layer .weather-fc      { grid-row: 3; }
 
-.weather-body {
+/* The two-column body only exists when calendar data is present. */
+.weather-body.has-calendar {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: 1fr minmax(280px, 32%);
   gap: 32px;
   align-items: center;
-}
-.weather-body.has-calendar {
-  grid-template-columns: 1fr minmax(280px, 32%);
 }
 
 .calendar-overlay {

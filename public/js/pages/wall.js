@@ -387,8 +387,8 @@ async function renderWeather() {
         el('h2', {}, [`The Lopez House · ${fmtDate(now)}`]),
         el('span', { class: 't' }, [fmtTime(now)]),
       ]),
-      el('div', { class: 'weather-body' + (hasCal ? ' has-calendar' : '') }, [
-        el('div', { class: 'weather-current' }, [
+      (() => {
+        const current = el('div', { class: 'weather-current' }, [
           el('div', { class: 'weather-hero' }, [
             el('div', { class: 'weather-ico' }, [WEATHER_ICONS[theme] || '·']),
             el('div', { class: 'temp' }, [`${data.current_temp}${u}`]),
@@ -399,9 +399,14 @@ async function renderWeather() {
           ]),
           ...curveEls,
           metrics,
-        ]),
-        hasCal ? buildCalendarOverlay(calData) : null,
-      ].filter(Boolean)),
+        ]);
+        // Only wrap in a two-column grid when calendar data is actually
+        // present. Otherwise let .weather-current sit directly in the layer
+        // so the middle row is not a giant empty block.
+        return hasCal
+          ? el('div', { class: 'weather-body has-calendar' }, [current, buildCalendarOverlay(calData)])
+          : current;
+      })(),
       el('div', { class: 'weather-fc' }, heroFc),
     ]),
   ]));
