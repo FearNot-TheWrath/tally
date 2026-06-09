@@ -53,6 +53,9 @@ export function buildApp({ db, sessionSecret = 'dev-secret', uploadsDir = './upl
   app.use('/api/admin', adminCalendarRoutes());
 
   app.get('/wall', (_req, res) => res.sendFile(join(__dirname, '..', 'public', 'wall.html')));
+  // /admin is a SPA route; serve index.html and let client-side routing handle it.
+  // Needed so OAuth callbacks that redirect to /admin?...#wall actually land somewhere.
+  app.get('/admin', (_req, res) => res.sendFile(join(__dirname, '..', 'public', 'index.html')));
   app.use(express.static(join(__dirname, '..', 'public'), {
     // We deploy multiple times a day; long max-age means browsers and
     // intermediaries serve stale admin.js / home.js after a deploy and
