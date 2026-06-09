@@ -3,6 +3,20 @@ import { el, clear } from '../lib/dom.js';
 import { isMilestone, streakConfetti, milestoneConfetti } from '../lib/confetti.js';
 import { pushStatus, enablePush } from '../lib/push-client.js';
 
+function bonusHeat(b) {
+  const min = b.min_points ?? b.points;
+  const max = b.max_points ?? b.points;
+  const cur = b.current_points ?? b.points;
+  if (max <= min) return 'low';
+  const pct = Math.max(0, Math.min(1, (cur - min) / (max - min)));
+  if (pct <= 0.25) return 'low';
+  if (pct <= 0.74) return 'mid';
+  return 'high';
+}
+function bonusDisplayPoints(b) {
+  return b.current_points ?? b.points;
+}
+
 export async function renderHome(root) {
   clear(root);
   const data = await api.get('/api/home');
@@ -58,7 +72,7 @@ export async function renderHome(root) {
   const bonusBoardSection = (data.bonuses && data.bonuses.length > 0)
     ? el('section', { class: 'stack' }, [
         el('div', { class: 'label' }, ['Bonus board']),
-        ...data.bonuses.map(b => el('div', { class: 'txn bonus-row' }, [
+        ...data.bonuses.map(b => el('div', { class: 'txn bonus-row', 'data-heat': bonusHeat(b) }, [
           el('div', { class: 'left' }, [
             el('div', { class: 'ico bonus-ico' }, ['★']),
             el('div', {}, [
@@ -84,7 +98,7 @@ export async function renderHome(root) {
                 renderHome(root);
               }
             },
-          }, [`Claim · +${b.points}`]),
+          }, [`Claim · +${bonusDisplayPoints(b)}`]),
         ])),
       ])
     : null;

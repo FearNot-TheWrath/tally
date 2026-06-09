@@ -90,6 +90,20 @@ function fmtHHMM(d) {
 // Chores render (verbatim from pre-Suite wall.js)
 // ------------------------------------------------------------------
 
+function bonusHeat(b) {
+  const min = b.min_points ?? b.points;
+  const max = b.max_points ?? b.points;
+  const cur = b.current_points ?? b.points;
+  if (max <= min) return 'low';
+  const pct = Math.max(0, Math.min(1, (cur - min) / (max - min)));
+  if (pct <= 0.25) return 'low';
+  if (pct <= 0.74) return 'mid';
+  return 'high';
+}
+function bonusDisplayPoints(b) {
+  return b.current_points ?? b.points;
+}
+
 async function renderChores() {
   const data = await api.get('/api/wall').catch(() => null);
   if (!data) {
@@ -177,9 +191,9 @@ async function renderChores() {
     ? el('div', { class: 'wall-bonus-strip' }, [
         el('div', { class: 'wall-bonus-strip-label' }, ['Bonus board · up for grabs']),
         el('div', { class: 'wall-bonus-strip-items' },
-          data.bonuses.map(b => el('div', { class: 'wall-bonus-item' }, [
+          data.bonuses.map(b => el('div', { class: 'wall-bonus-item', 'data-heat': bonusHeat(b) }, [
             el('div', { class: 'wall-bonus-title' }, [b.title]),
-            el('div', { class: 'wall-bonus-pts' }, [`+${b.points}`]),
+            el('div', { class: 'wall-bonus-pts' }, [`+${bonusDisplayPoints(b)}`]),
           ]))
         ),
       ])
