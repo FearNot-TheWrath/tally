@@ -212,6 +212,38 @@ Each feature ships as a phase: a design spec in `docs/superpowers/specs/`, an im
 
 ---
 
+## Wall calendar overlay (Google Calendar via OAuth)
+
+The wall's weather panel shows today + tomorrow events from one or more Google
+Calendars. To set this up:
+
+1. **Create OAuth credentials in Google Cloud Console.**
+   - Visit https://console.cloud.google.com, create or pick a project.
+   - APIs & Services > Library: enable **Google Calendar API**.
+   - APIs & Services > Credentials > Create credentials > OAuth client ID
+     > Web application.
+   - Authorized redirect URI: `https://your-host/api/auth/google/callback`.
+2. **Drop the credentials in `.env`.**
+   ```
+   GOOGLE_CLIENT_ID=...
+   GOOGLE_CLIENT_SECRET=...
+   GOOGLE_REDIRECT_URI=https://your-host/api/auth/google/callback
+   ```
+3. **Restart Tally:** `pm2 restart tally --update-env`.
+4. **Connect from the admin Wall tab.** Open admin, navigate to the Wall tab,
+   scroll to the Calendar card, click **Connect Google Calendar**. Google asks
+   you to consent to read-only calendar access. After consent you'll be
+   redirected back to the Wall tab where a checklist of your calendars appears.
+5. **Pick which calendars feed the wall.** Tick the boxes; the overlay renders
+   their events within ~5 minutes.
+
+If Google revokes access (you delete the OAuth grant or rotate the client
+secret), the overlay collapses and the admin tab shows the Connect button
+again. The refresh token in the DB is encrypted with a key derived from
+`SESSION_SECRET`; if that secret changes you must reconnect.
+
+---
+
 ## License
 
 Private family project. Not licensed for redistribution.
