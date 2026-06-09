@@ -6,6 +6,7 @@ const TABS = [
   { key: 'day-review', label: 'Day review', render: renderDayReview },
   { key: 'approvals',  label: 'Approvals',  render: renderApprovals },
   { key: 'bonuses',    label: 'Bonus board', render: renderBonuses },
+  { key: 'wall',       label: 'Wall',       render: renderWall },
   { key: 'bank',       label: 'Bank',       render: renderBank },
   { key: 'people',     label: 'People',     render: renderPeople },
   { key: 'chores',     label: 'Chores',     render: renderChores },
@@ -591,6 +592,186 @@ function renderDayReviewRow(it, host, date) {
   ]);
 }
 
+/* ───── Wall tab ───── */
+async function renderWall(host) {
+  clear(host);
+  const data = await api.get('/api/admin/settings');
+  const s = data.settings;
+
+  host.appendChild(el('h3', { style: { marginBottom: 'var(--s4)' } }, ['Wall']));
+
+  // ------- Card 1: Panels -------
+  const enabledRaw = (s.wall_enabled_panels || 'chores,weather,calendar,verse-fact').split(',').map(p => p.trim());
+  const enabledSet = new Set(enabledRaw);
+  const PANELS = [
+    { k: 'chores',     label: 'Chores wall',         locked: true },
+    { k: 'weather',    label: 'Weather',             locked: false },
+    { k: 'calendar',   label: 'Calendar (v0.15.0)',  locked: false },
+    { k: 'verse-fact', label: 'Verse / Fact',        locked: false },
+  ];
+
+  const panelsCard = el('div', { class: 'card', style: { marginBottom: 'var(--s4)' } }, [
+    el('h4', { style: { marginBottom: 'var(--s3)' } }, ['Panels']),
+    el('div', { class: 'row', style: { flexWrap: 'wrap', gap: '12px' } },
+      PANELS.map(p => {
+        const cb = el('input', {
+          type: 'checkbox',
+          checked: (enabledSet.has(p.k) || p.locked) ? 'checked' : null,
+          disabled: p.locked ? 'disabled' : null,
+          onChange: async (e) => {
+            if (e.target.checked) enabledSet.add(p.k); else enabledSet.delete(p.k);
+            enabledSet.add('chores');
+            try { await api.patch('/api/admin/settings/wall_enabled_panels', { value: [...enabledSet].join(',') }); renderWall(host); }
+            catch (err) { alert('Save failed: ' + err.message); e.target.checked = !e.target.checked; }
+          },
+        });
+        return el('label', { class: 'row', style: { gap: '6px', cursor: p.locked ? 'not-allowed' : 'pointer' } }, [cb, p.label]);
+      })
+    ),
+    el('div', { class: 'form-field', style: { marginTop: 'var(--s3)' } }, [
+      el('label', { class: 'row', style: { gap: '6px', cursor: 'pointer' } }, [
+        el('input', {
+          type: 'checkbox',
+          checked: (s.wall_smart_cycle || 'on') === 'on' ? 'checked' : null,
+          onChange: async (e) => {
+            const value = e.target.checked ? 'on' : 'off';
+            try { await api.patch('/api/admin/settings/wall_smart_cycle', { value }); }
+            catch (err) { alert('Save failed: ' + err.message); e.target.checked = !e.target.checked; }
+          },
+        }),
+        el('span', {}, ['Smart cycle (chores between each other panel)']),
+      ]),
+    ]),
+  ]);
+  host.appendChild(panelsCard);
+
+  // ------- Card 2: Rotation timing -------
+  const dwellState = {
+    chores:     Number(s.wall_chores_dwell_sec   || 60),
+    weather:    Number(s.wall_weather_dwell_sec  || 15),
+    calendar:   Number(s.wall_calendar_dwell_sec || 15),
+    'verse-fact': Number(s.wall_verse_dwell_sec  || 15),
+  };
+  function pctBadge(k) {
+    const enabled = PANELS.filter(p => enabledSet.has(p.k) || p.locked).map(p => p.k);
+    let total = 0;
+    for (const e of enabled) total += dwellState[e] || 0;
+    if (!total) return '0%';
+    const v = dwellState[k] || 0;
+    return Math.round((v / total) * 100) + '% of cycle';
+  }
+  const rotationRows = [];
+  const rotationCard = el('div', { class: 'card', style: { marginBottom: 'var(--s4)' } }, [
+    el('h4', { style: { marginBottom: 'var(--s3)' } }, ['Rotation timing']),
+    ...PANELS.filter(p => enabledSet.has(p.k) || p.locked).map(p => {
+      const settingKey = p.k === 'chores'     ? 'wall_chores_dwell_sec'
+                       : p.k === 'weather'    ? 'wall_weather_dwell_sec'
+                       : p.k === 'calendar'   ? 'wall_calendar_dwell_sec'
+                       :                        'wall_verse_dwell_sec';
+      const badge = el('span', { class: 'muted', style: { fontSize: '0.82rem', minWidth: '110px', textAlign: 'right' } }, [pctBadge(p.k)]);
+      rotationRows.push({ panel: p.k, badge });
+      return el('div', { class: 'row spaced', style: { marginBottom: '8px', alignItems: 'center' } }, [
+        el('div', { style: { minWidth: '110px' } }, [p.label]),
+        el('input', {
+          type: 'number', min: '5', max: '600',
+          value: String(dwellState[p.k]),
+          style: { width: '90px' },
+          onInput: (e) => {
+            dwellState[p.k] = Number(e.target.value);
+            for (const row of rotationRows) row.badge.textContent = pctBadge(row.panel);
+          },
+          onChange: async (e) => {
+            const value = String(Number(e.target.value));
+            try { await api.patch(`/api/admin/settings/${settingKey}`, { value }); e.target.style.borderColor = 'var(--green)'; setTimeout(() => { e.target.style.borderColor = ''; }, 800); }
+            catch (err) { alert('Save failed: ' + err.message); }
+          },
+        }),
+        el('span', { class: 'muted' }, ['sec']),
+        badge,
+      ]);
+    }),
+  ]);
+  host.appendChild(rotationCard);
+
+  // ------- Card 3: Weather -------
+  const resolvedNote = el('div', { class: 'muted', style: { fontSize: '0.78rem', marginTop: '4px' } }, [
+    (s.wall_weather_lat && s.wall_weather_lon)
+      ? `Resolved to ${s.wall_weather_lat}, ${s.wall_weather_lon}`
+      : 'Not resolved; weather panel will skip itself.',
+  ]);
+  const weatherCard = el('div', { class: 'card', style: { marginBottom: 'var(--s4)' } }, [
+    el('h4', { style: { marginBottom: 'var(--s3)' } }, ['Weather']),
+    el('div', { class: 'form-field' }, [
+      el('label', {}, ['Location (zip code, city, or lat,lon)']),
+      el('input', {
+        type: 'text', placeholder: '78634 or Hutto, TX',
+        value: s.wall_weather_location || '',
+        onChange: async (e) => {
+          const value = e.target.value.trim();
+          try {
+            const r = await api.patch('/api/admin/settings/wall_weather_location', { value });
+            resolvedNote.textContent = r.resolved
+              ? `Resolved to ${r.resolved.lat}, ${r.resolved.lon}${r.resolved.name ? ' (' + r.resolved.name + ')' : ''}`
+              : 'Could not resolve; weather panel will skip itself.';
+            e.target.style.borderColor = 'var(--green)';
+            setTimeout(() => { e.target.style.borderColor = ''; }, 800);
+          } catch (err) { alert('Save failed: ' + err.message); }
+        },
+      }),
+      resolvedNote,
+    ]),
+    el('div', { class: 'form-field' }, [
+      el('label', {}, ['Unit']),
+      el('select', {
+        onChange: async (e) => {
+          try { await api.patch('/api/admin/settings/wall_weather_unit', { value: e.target.value }); }
+          catch (err) { alert('Save failed: ' + err.message); }
+        },
+      }, ['F','C'].map(u => el('option', { value: u, selected: (s.wall_weather_unit || 'F') === u }, [u]))),
+    ]),
+    el('button', {
+      class: 'btn btn-ghost',
+      onClick: async () => {
+        try {
+          const r = await api.get('/api/wall/weather');
+          alert(r.skip ? `Weather skipped: ${r.reason}` : `OK: ${r.current_temp}${r.unit === 'C' ? '°C' : '°F'}, theme ${r.theme}`);
+        } catch (err) { alert('Test failed: ' + err.message); }
+      },
+    }, ['Test weather fetch']),
+  ]);
+  host.appendChild(weatherCard);
+
+  // ------- Card 4: Sleep -------
+  const timeField = (key, defaultVal, label) => el('div', { class: 'form-field' }, [
+    el('label', {}, [label]),
+    el('input', {
+      type: 'time',
+      value: s[key] || defaultVal,
+      onChange: async (e) => {
+        try { await api.patch(`/api/admin/settings/${key}`, { value: e.target.value }); e.target.style.borderColor = 'var(--green)'; setTimeout(() => { e.target.style.borderColor = ''; }, 800); }
+        catch (err) { alert('Save failed: ' + err.message); }
+      },
+    }),
+  ]);
+  const sleepCard = el('div', { class: 'card' }, [
+    el('h4', { style: { marginBottom: 'var(--s3)' } }, ['Sleep']),
+    timeField('wall_sleep_start', '22:00', 'Wall sleep start'),
+    timeField('wall_sleep_end',   '06:00', 'Wall sleep end'),
+    el('div', { class: 'form-field' }, [
+      el('label', {}, ['Sleep clock style']),
+      el('select', {
+        onChange: async (e) => {
+          try { await api.patch('/api/admin/settings/wall_sleep_clock_style', { value: e.target.value }); }
+          catch (err) { alert('Save failed: ' + err.message); }
+        },
+      }, [
+        ['digital','Digital'], ['analog-minimal','Analog · minimal'], ['analog-classic','Analog · classic'],
+      ].map(([v, label]) => el('option', { value: v, selected: (s.wall_sleep_clock_style || 'analog-minimal') === v }, [label]))),
+    ]),
+  ]);
+  host.appendChild(sleepCard);
+}
+
 /* ───── Settings tab ───── */
 async function renderSettings(host) {
   clear(host);
@@ -681,162 +862,6 @@ async function renderSettings(host) {
   ]);
   host.appendChild(retentionField);
 
-  // ───── Wall Suite ─────
-  host.appendChild(el('h3', { style: { marginTop: 'var(--s5)', marginBottom: 'var(--s3)' } }, ['Wall Suite']));
-
-  // Panels enabled
-  const enabledRaw = (s.wall_enabled_panels || 'chores,weather,calendar,verse-fact').split(',').map(p => p.trim());
-  const enabledSet = new Set(enabledRaw);
-  const panelOpts = [
-    { k: 'chores',     label: 'Chores wall', locked: true },
-    { k: 'weather',    label: 'Weather', locked: false },
-    { k: 'calendar',   label: 'Calendar (Phase 2)', locked: false },
-    { k: 'verse-fact', label: 'Verse / Fact (Phase 2)', locked: false },
-  ];
-  const panelChecks = panelOpts.map(p => {
-    const cb = el('input', {
-      type: 'checkbox',
-      checked: enabledSet.has(p.k) || p.locked ? 'checked' : null,
-      disabled: p.locked ? 'disabled' : null,
-      onChange: async (e) => {
-        if (e.target.checked) enabledSet.add(p.k); else enabledSet.delete(p.k);
-        enabledSet.add('chores');
-        const value = [...enabledSet].join(',');
-        try {
-          await api.patch('/api/admin/settings/wall_enabled_panels', { value });
-          e.target.style.outline = '2px solid var(--green)';
-          setTimeout(() => { e.target.style.outline = ''; }, 800);
-        } catch (err) { alert('Save failed: ' + err.message); e.target.checked = !e.target.checked; }
-      },
-    });
-    return el('label', { class: 'row', style: { gap: '6px', marginRight: '18px', cursor: p.locked ? 'not-allowed' : 'pointer' } }, [cb, p.label]);
-  });
-  host.appendChild(el('div', { class: 'form-field' }, [
-    el('label', {}, ['Panels enabled']),
-    el('div', { class: 'row', style: { flexWrap: 'wrap', gap: '6px' } }, panelChecks),
-  ]));
-
-  // Rotation timing
-  const numField = (key, defaultVal, label, hint, min = 5, max = 600) => el('div', { class: 'form-field' }, [
-    el('label', {}, [label]),
-    el('input', {
-      type: 'number',
-      min: String(min), max: String(max),
-      value: s[key] || defaultVal,
-      onChange: async (e) => {
-        const value = e.target.value;
-        try {
-          await api.patch(`/api/admin/settings/${key}`, { value: String(value) });
-          e.target.style.borderColor = 'var(--green)';
-          setTimeout(() => { e.target.style.borderColor = ''; }, 800);
-        } catch (err) { alert('Save failed: ' + err.message); }
-      },
-    }),
-    el('div', { class: 'muted', style: { fontSize: '0.78rem', marginTop: '4px' } }, [hint]),
-  ]);
-  host.appendChild(numField('wall_chores_dwell_sec', '60', 'Chores panel dwell (seconds)',
-    'How long the chores wall stays before another panel visits. 5..600.'));
-  host.appendChild(numField('wall_other_dwell_sec', '15', 'Other panel dwell (seconds)',
-    'How long each non-chores panel shows before returning to chores. 5..600.'));
-
-  // Weather location
-  const textField = (key, defaultVal, label, hint, placeholder = '') => el('div', { class: 'form-field' }, [
-    el('label', {}, [label]),
-    el('input', {
-      type: 'text',
-      value: s[key] || defaultVal || '',
-      placeholder,
-      onChange: async (e) => {
-        const value = e.target.value.trim();
-        try {
-          await api.patch(`/api/admin/settings/${key}`, { value });
-          e.target.style.borderColor = 'var(--green)';
-          setTimeout(() => { e.target.style.borderColor = ''; }, 800);
-        } catch (err) { alert('Save failed: ' + err.message); }
-      },
-    }),
-    el('div', { class: 'muted', style: { fontSize: '0.78rem', marginTop: '4px' } }, [hint]),
-  ]);
-  host.appendChild(textField('wall_weather_lat', '', 'Weather latitude',
-    'Decimal degrees. Leave blank to disable weather. Example: 30.5083 for Hutto, TX.', '30.5083'));
-  host.appendChild(textField('wall_weather_lon', '', 'Weather longitude',
-    'Decimal degrees. Negative for western hemisphere. Example: -97.5469 for Hutto, TX.', '-97.5469'));
-
-  const unitField = el('div', { class: 'form-field' }, [
-    el('label', {}, ['Weather unit']),
-    el('select', {
-      onChange: async (e) => {
-        try {
-          await api.patch('/api/admin/settings/wall_weather_unit', { value: e.target.value });
-        } catch (err) { alert('Save failed: ' + err.message); }
-      },
-    }, ['F','C'].map(u => el('option', { value: u, selected: (s.wall_weather_unit || 'F') === u }, [u]))),
-  ]);
-  host.appendChild(unitField);
-
-  // Test button for weather
-  const weatherTestBtn = el('button', {
-    class: 'btn btn-ghost',
-    style: { marginTop: '4px' },
-    onClick: async () => {
-      try {
-        const r = await api.get('/api/wall/weather');
-        alert(r.skip ? `Weather skipped: ${r.reason}` : `OK: ${r.current_temp}${r.unit === 'C' ? '°C' : '°F'}, theme ${r.theme}`);
-      } catch (err) { alert('Test failed: ' + err.message); }
-    },
-  }, ['Test weather fetch']);
-  host.appendChild(el('div', { class: 'form-field' }, [weatherTestBtn]));
-
-  // Radar backdrop
-  const radarToggle = el('div', { class: 'form-field' }, [
-    el('label', {}, ['Weather radar backdrop']),
-    el('select', {
-      onChange: async (e) => {
-        try { await api.patch('/api/admin/settings/wall_weather_radar', { value: e.target.value }); }
-        catch (err) { alert('Save failed: ' + err.message); }
-      },
-    }, [['on','On'], ['off','Off']].map(([v, label]) =>
-        el('option', { value: v, selected: (s.wall_weather_radar || 'on') === v }, [label]))),
-    el('div', { class: 'muted', style: { fontSize: '0.78rem', marginTop: '4px' } },
-      ['Shows live precipitation radar faded behind the weather panel.']),
-  ]);
-  host.appendChild(radarToggle);
-
-  // Sleep window
-  const sleepTimeField = (key, defaultVal, label, hint) => el('div', { class: 'form-field' }, [
-    el('label', {}, [label]),
-    el('input', {
-      type: 'time',
-      value: s[key] || defaultVal,
-      onChange: async (e) => {
-        try {
-          await api.patch(`/api/admin/settings/${key}`, { value: e.target.value });
-          e.target.style.borderColor = 'var(--green)';
-          setTimeout(() => { e.target.style.borderColor = ''; }, 800);
-        } catch (err) { alert('Save failed: ' + err.message); }
-      },
-    }),
-    el('div', { class: 'muted', style: { fontSize: '0.78rem', marginTop: '4px' } }, [hint]),
-  ]);
-  host.appendChild(sleepTimeField('wall_sleep_start', '22:00', 'Wall sleep start',
-    'When the wall enters sleep mode (black with a drifting dim clock).'));
-  host.appendChild(sleepTimeField('wall_sleep_end', '06:00', 'Wall sleep end',
-    'When the wall wakes back up. Crosses midnight if start > end.'));
-
-  // Clock style
-  const clockStyleField = el('div', { class: 'form-field' }, [
-    el('label', {}, ['Sleep clock style']),
-    el('select', {
-      onChange: async (e) => {
-        try {
-          await api.patch('/api/admin/settings/wall_sleep_clock_style', { value: e.target.value });
-        } catch (err) { alert('Save failed: ' + err.message); }
-      },
-    }, [
-      ['digital','Digital'], ['analog-minimal','Analog · minimal'], ['analog-classic','Analog · classic'],
-    ].map(([v, label]) => el('option', { value: v, selected: (s.wall_sleep_clock_style || 'analog-minimal') === v }, [label]))),
-  ]);
-  host.appendChild(clockStyleField);
 }
 
 /* ───── Bank tab ───── */
