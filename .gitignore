@@ -9,3 +9,5 @@ uploads/
 .DS_Store
 .superpowers/
 public/generated/
+scripts/__pycache__/
+docs/nabre.json
