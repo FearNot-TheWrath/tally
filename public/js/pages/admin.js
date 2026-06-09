@@ -729,6 +729,20 @@ async function renderWall(host) {
         },
       }, ['F','C'].map(u => el('option', { value: u, selected: (s.wall_weather_unit || 'F') === u }, [u]))),
     ]),
+    el('div', { class: 'form-field' }, [
+      el('label', { class: 'row', style: { gap: '6px', cursor: 'pointer' } }, [
+        el('input', {
+          type: 'checkbox',
+          checked: (s.wall_weather_radar || 'off') === 'on' ? 'checked' : null,
+          onChange: async (e) => {
+            const value = e.target.checked ? 'on' : 'off';
+            try { await api.patch('/api/admin/settings/wall_weather_radar', { value }); }
+            catch (err) { alert('Save failed: ' + err.message); e.target.checked = !e.target.checked; }
+          },
+        }),
+        el('span', {}, ['Live radar backdrop on weather panel']),
+      ]),
+    ]),
     el('button', {
       class: 'btn btn-ghost',
       onClick: async () => {
