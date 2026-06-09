@@ -5,6 +5,7 @@ import { calcWeekPoints, calcProjectedPay } from '../../lib/points.js';
 import { currentStreak, isOnFreeze } from '../../lib/streak.js';
 import { runPayoutIfDue } from '../../lib/payout.js';
 import { sweepForfeits } from '../../lib/forfeit.js';
+import { sweepBonusRipening } from '../../lib/bonus-ripen.js';
 
 export function adminTodayRoutes() {
   const r = Router();
@@ -14,6 +15,7 @@ export function adminTodayRoutes() {
     const db = req.app.get('db');
     runPayoutIfDue(db);
     sweepForfeits(db);
+    sweepBonusRipening(db);
     const t = today();
     const ws = weekStart(t);
     const kids = db.prepare(`

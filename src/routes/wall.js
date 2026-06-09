@@ -7,6 +7,7 @@ import { currentStreak, isOnFreeze } from '../lib/streak.js';
 import { wallBus } from '../lib/events.js';
 import { runPayoutIfDue } from '../lib/payout.js';
 import { sweepForfeits } from '../lib/forfeit.js';
+import { sweepBonusRipening } from '../lib/bonus-ripen.js';
 import { fetchOpenMeteo, parseForecast } from '../lib/wall/open-meteo.js';
 import { resolveVerse } from '../lib/wall/verse-resolve.js';
 
@@ -122,6 +123,7 @@ export function wallRoutes() {
     const db = req.app.get('db');
     runPayoutIfDue(db);
     sweepForfeits(db);
+    sweepBonusRipening(db);
     const kids = db.prepare(`
       SELECT id, name, avatar_color, weekly_target_pts, streak_days, bank_cents
       FROM people WHERE role = 'kid' ORDER BY id
@@ -178,7 +180,8 @@ export function wallRoutes() {
     const housePct = total === 0 ? 100 : Math.round((done / total) * 100);
 
     const bonuses = db.prepare(`
-      SELECT c.id, c.title, c.points, c.anti_cheat
+      SELECT c.id, c.title, c.points, c.anti_cheat,
+             c.min_points, c.max_points, c.current_points
       FROM chores c
       LEFT JOIN assignments a ON a.chore_id = c.id
       WHERE c.kind = 'bonus' AND c.deleted_at IS NULL AND a.id IS NULL

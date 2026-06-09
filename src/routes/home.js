@@ -9,6 +9,7 @@ import { currentStreak, streakAtRisk, isOnFreeze } from '../lib/streak.js';
 import { notifyWall } from '../lib/events.js';
 import { runPayoutIfDue } from '../lib/payout.js';
 import { sweepForfeits } from '../lib/forfeit.js';
+import { sweepBonusRipening } from '../lib/bonus-ripen.js';
 
 export function homeRoutes({ uploadsDir = './uploads' } = {}) {
   const r = Router();
@@ -21,6 +22,7 @@ export function homeRoutes({ uploadsDir = './uploads' } = {}) {
     const db = req.app.get('db');
     runPayoutIfDue(db);
     sweepForfeits(db);
+    sweepBonusRipening(db);
     const personId = req.user.person_id;
     const person = db.prepare(`
       SELECT id, name, avatar_color, weekly_target_pts, base_pay_cents, bonus_rate_cents,
@@ -126,7 +128,8 @@ export function homeRoutes({ uploadsDir = './uploads' } = {}) {
     const overdueList = assignments.filter(a => a.due_date !== today());
 
     const bonuses = db.prepare(`
-      SELECT c.id, c.title, c.description, c.points, c.anti_cheat, c.photo_prompt
+      SELECT c.id, c.title, c.description, c.points, c.anti_cheat, c.photo_prompt,
+             c.min_points, c.max_points, c.current_points
       FROM chores c
       LEFT JOIN assignments a ON a.chore_id = c.id
       WHERE c.kind = 'bonus' AND c.deleted_at IS NULL AND a.id IS NULL
