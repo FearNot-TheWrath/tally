@@ -1,7 +1,17 @@
-import { test } from 'node:test';
+import { test, beforeEach, afterEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import request from 'supertest';
 import { freshApp, freshDb } from './helpers.js';
+
+// Freeze JS time to local noon today so the relative unlock offsets below never
+// cross midnight. isUnlocked() builds its cutoff from new Date(), and the helpers
+// derive HH:MM from new Date() too; near midnight a "+60 min" offset would wrap to
+// an earlier clock time and flip the comparison. Noon today keeps the helper and
+// the route on the same in-day instant, and on the same calendar date as SQLite's
+// date('now') (which the Date mock does not touch).
+const FIXED_NOON = (() => { const d = new Date(); d.setHours(12, 0, 0, 0); return d.getTime(); })();
+beforeEach(() => mock.timers.enable({ apis: ['Date'], now: FIXED_NOON }));
+afterEach(() => mock.timers.reset());
 
 function setUnlockMinutesAgo(db, minutes) {
   const d = new Date(Date.now() - minutes * 60 * 1000);

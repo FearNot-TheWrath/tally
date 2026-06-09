@@ -400,7 +400,7 @@ async function renderWeather() {
   if (radarEnabled) {
     // Server-rendered animated radar (RainViewer + dark map, baked into a WebP
     // refreshed every ~5 min). The wall just plays the finished image over the
-    // gradient — no Leaflet, no blend — so it stays light enough for the Pi.
+    // gradient (no live map, no blend) so it stays light enough for the Pi.
     // The cb bucket changes every 5 min to pull the freshly generated frame.
     const cb = Math.floor(Date.now() / 300000);
     const bg = el('div', { class: 'weather-radar' }, []);
@@ -739,7 +739,7 @@ if (new URLSearchParams(location.search).has('debug')) {
     const secs = Math.max(0, Math.round((nextSwitchAt - Date.now()) / 1000));
     dbg.textContent =
       `build ${BUILD_TAG}\npanel ${rotation.current()}  sleep ${inSleep}\n`
-      + `next switch in ${secs}s\nleaflet ${typeof window.L !== 'undefined'}\n`
+      + `next switch in ${secs}s\n`
       + `err ${lastWallError || 'none'}`;
   }, 500);
 }

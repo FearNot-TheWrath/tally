@@ -19,11 +19,12 @@ import io
 import json
 import math
 import os
+import time
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 
 # --- config -----------------------------------------------------------------
 LAT = float(os.environ.get("WALL_LAT", "30.5083"))    # Hutto, TX
@@ -99,6 +100,16 @@ def main():
 
     cxp, cyp = W // 2, int(H * 0.42)
 
+    # Freshness stamp (generation time) baked into every frame, faint in the
+    # bottom-right corner so a glance confirms the radar is regenerating even
+    # when there is no precipitation moving on screen.
+    stamp = "Updated " + time.strftime("%-I:%M %p")
+    try:
+        stamp_font = ImageFont.truetype(
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 24)
+    except Exception:
+        stamp_font = ImageFont.load_default()
+
     def compose(rain_layer):
         r = np.asarray(rain_layer).astype(np.float32) / 255.0
         ra = r[..., 3]
@@ -112,6 +123,13 @@ def main():
         draw.ellipse([cxp - 18, cyp - 18, cxp + 18, cyp + 18], fill=(47, 128, 255, 70))
         draw.ellipse([cxp - 8, cyp - 8, cxp + 8, cyp + 8], fill=(47, 128, 255, 255),
                      outline=(255, 255, 255, 255), width=3)
+        try:
+            tw = draw.textlength(stamp, font=stamp_font)
+        except AttributeError:
+            tw = stamp_font.getsize(stamp)[0]
+        tx, ty = W - tw - 22, H - 40
+        draw.text((tx + 1, ty + 1), stamp, font=stamp_font, fill=(0, 0, 0, 170))   # shadow
+        draw.text((tx, ty), stamp, font=stamp_font, fill=(255, 255, 255, 180))     # faint label
         return img
 
     frames = []
