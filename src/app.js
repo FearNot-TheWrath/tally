@@ -15,6 +15,7 @@ import { adminSettingsRoutes } from './routes/admin/settings.js';
 import { adminBonusesRoutes } from './routes/admin/bonuses.js';
 import { adminBankRoutes } from './routes/admin/bank.js';
 import { adminAssignmentsRoutes } from './routes/admin/assignments.js';
+import { adminCalendarRoutes } from './routes/admin/calendar.js';
 import { pushRoutes } from './routes/push.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -49,6 +50,7 @@ export function buildApp({ db, sessionSecret = 'dev-secret', uploadsDir = './upl
   app.use('/api/admin', adminBonusesRoutes());
   app.use('/api/admin', adminBankRoutes());
   app.use('/api/admin', adminAssignmentsRoutes());
+  app.use('/api/admin', adminCalendarRoutes());
 
   app.get('/wall', (_req, res) => res.sendFile(join(__dirname, '..', 'public', 'wall.html')));
   app.use(express.static(join(__dirname, '..', 'public'), {

@@ -10,6 +10,8 @@ import { sweepForfeits } from '../lib/forfeit.js';
 import { sweepBonusRipening } from '../lib/bonus-ripen.js';
 import { fetchOpenMeteo, parseForecast } from '../lib/wall/open-meteo.js';
 import { resolveVerse } from '../lib/wall/verse-resolve.js';
+import { decryptFromSetting } from '../lib/crypto-settings.js';
+import { refreshAccessToken, fetchCalendarList, fetchCalendarEvents, InvalidGrantError } from '../lib/wall/google-cal.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const VERSE_GENERATED = join(__dirname, '..', '..', 'public', 'generated', 'wall-verse.json');
@@ -27,6 +29,16 @@ export function _resetWeatherState() {
   weatherCache = null;
   weatherLastSuccess = 0;
   weatherLastFailureLog = 0;
+}
+
+let calendarCache = null;        // { key, data, fetchedAt }
+let calendarLastFailureLog = 0;
+
+const CALENDAR_CACHE_MS = 5 * 60 * 1000;
+
+export function _resetCalendarCache() {
+  calendarCache = null;
+  calendarLastFailureLog = 0;
 }
 
 // Radar is a server-rendered animated WebP (scripts/wall-radar.py composites the
@@ -121,6 +133,94 @@ export function wallRoutes() {
       }
       return res.json({ skip: true, reason: 'fetch failed' });
     }
+  });
+
+  r.get('/wall/calendar', async (req, res) => {
+    const db = req.app.get('db');
+    const rows = db.prepare(
+      "SELECT key, value FROM settings WHERE key IN ('wall_calendar_oauth_refresh','wall_calendar_selected_ids','wall_calendar_list_cache')"
+    ).all();
+    const s = Object.fromEntries(rows.map(r => [r.key, r.value]));
+    if (!s.wall_calendar_oauth_refresh) return res.json({ skip: true, reason: 'not connected' });
+    if (!s.wall_calendar_selected_ids)  return res.json({ skip: true, reason: 'no calendars selected' });
+
+    const ids = s.wall_calendar_selected_ids.split(',').map(x => x.trim()).filter(Boolean);
+    if (ids.length === 0) return res.json({ skip: true, reason: 'no calendars selected' });
+
+    const cacheKey = ids.join(',');
+    const now = Date.now();
+    if (calendarCache && calendarCache.key === cacheKey && (now - calendarCache.fetchedAt) < CALENDAR_CACHE_MS) {
+      return res.json(calendarCache.data);
+    }
+
+    const secret = process.env.SESSION_SECRET || 'dev-secret-change-me';
+    const refresh = decryptFromSetting(s.wall_calendar_oauth_refresh, secret);
+    if (!refresh) {
+      return res.json({ skip: true, reason: 'reconnect required (decrypt failed)' });
+    }
+
+    let access;
+    try {
+      const t = await refreshAccessToken(refresh);
+      access = t.access_token;
+    } catch (e) {
+      if (e instanceof InvalidGrantError) {
+        db.prepare("UPDATE settings SET value='' WHERE key='wall_calendar_oauth_refresh'").run();
+        return res.json({ skip: true, reason: 'reconnect required' });
+      }
+      if (now - calendarLastFailureLog > 5 * 60 * 1000) {
+        console.error('[wall/calendar] refresh failed:', e.message);
+        calendarLastFailureLog = now;
+      }
+      return res.json({ skip: true, reason: 'fetch failed' });
+    }
+
+    const list = (() => { try { return JSON.parse(s.wall_calendar_list_cache || '[]'); } catch { return []; } })();
+    const colorById = Object.fromEntries(list.map(c => [c.id, c.backgroundColor]));
+
+    // Use UTC dates for todayIso/tomorrowIso to match event date strings.
+    // Fetch a 3-day window to catch events regardless of timezone offset.
+    const nowDate = new Date();
+    const todayIso = nowDate.toISOString().slice(0,10);
+    const tomorrowIso = new Date(nowDate.getTime() + 86400000).toISOString().slice(0,10);
+    const timeMin = new Date(todayIso + 'T00:00:00Z').toISOString();
+    const timeMax = new Date(tomorrowIso + 'T23:59:59Z').toISOString();
+
+    let allEvents = [];
+    try {
+      for (const id of ids) {
+        const events = await fetchCalendarEvents(access, id, timeMin, timeMax);
+        for (const e of events) {
+          allEvents.push({ ...e, calendar_id: id, calendar_color: colorById[id] || '#7986CB' });
+        }
+      }
+    } catch (e) {
+      if (now - calendarLastFailureLog > 5 * 60 * 1000) {
+        console.error('[wall/calendar] events fetch failed:', e.message);
+        calendarLastFailureLog = now;
+      }
+      return res.json({ skip: true, reason: 'fetch failed' });
+    }
+
+    const dayOf = (e) => (e.start && e.start.slice(0,10)) || '';
+    const todayAll   = allEvents.filter(e =>  e.isAllDay && dayOf(e) === todayIso);
+    const todayTimed = allEvents.filter(e => !e.isAllDay && dayOf(e) === todayIso);
+    const tomAll     = allEvents.filter(e =>  e.isAllDay && dayOf(e) === tomorrowIso);
+    const tomTimed   = allEvents.filter(e => !e.isAllDay && dayOf(e) === tomorrowIso);
+
+    const total = todayAll.length + todayTimed.length + tomAll.length + tomTimed.length;
+    if (total === 0) {
+      const data = { skip: true, reason: 'no events' };
+      calendarCache = { key: cacheKey, data, fetchedAt: now };
+      return res.json(data);
+    }
+
+    const data = {
+      today:    { allDay: todayAll,  timed: todayTimed },
+      tomorrow: { allDay: tomAll,    timed: tomTimed },
+    };
+    calendarCache = { key: cacheKey, data, fetchedAt: now };
+    res.json(data);
   });
 
   r.get('/wall', (req, res) => {
