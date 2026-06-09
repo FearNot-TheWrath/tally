@@ -32,11 +32,12 @@ export async function geocodeLocation(input) {
   const c = _classifyInput(input);
   if (c.kind === 'empty') return null;
   if (c.kind === 'latlon') return { lat: c.lat, lon: c.lon, name: null };
+  // Open-Meteo's geocoding API has a single `name` query; zip codes work
+  // fine as a name lookup (they return the matching town).
   try {
-    if (c.kind === 'zip')  return await callOpenMeteo({ postal_code: c.zip, country: 'US' });
-    if (c.kind === 'text') return await callOpenMeteo({ name: c.text });
+    const q = c.kind === 'zip' ? c.zip : c.text;
+    return await callOpenMeteo({ name: q, country: 'US' });
   } catch (e) {
     return null;
   }
-  return null;
 }

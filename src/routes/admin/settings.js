@@ -137,16 +137,23 @@ export function adminSettingsRoutes() {
     // wall_weather_lat / wall_weather_lon keys.
     if (key === 'wall_weather_location') {
       const resolved = await geocodeLocation(value);
-      const lat = resolved ? String(resolved.lat) : '';
-      const lon = resolved ? String(resolved.lon) : '';
-      db.prepare(`
-        INSERT INTO settings (key, value) VALUES ('wall_weather_lat', ?)
-        ON CONFLICT(key) DO UPDATE SET value = excluded.value
-      `).run(lat);
-      db.prepare(`
-        INSERT INTO settings (key, value) VALUES ('wall_weather_lon', ?)
-        ON CONFLICT(key) DO UPDATE SET value = excluded.value
-      `).run(lon);
+      // Only OVERWRITE lat/lon on successful geocoding, or when the user
+      // explicitly cleared the location string (empty -> empty). A failed
+      // lookup must not wipe out a previously working lat/lon, otherwise the
+      // weather panel breaks just because the user mistyped a zip.
+      if (resolved) {
+        db.prepare(`
+          INSERT INTO settings (key, value) VALUES ('wall_weather_lat', ?)
+          ON CONFLICT(key) DO UPDATE SET value = excluded.value
+        `).run(String(resolved.lat));
+        db.prepare(`
+          INSERT INTO settings (key, value) VALUES ('wall_weather_lon', ?)
+          ON CONFLICT(key) DO UPDATE SET value = excluded.value
+        `).run(String(resolved.lon));
+      } else if (typeof value === 'string' && value.trim() === '') {
+        db.prepare("UPDATE settings SET value='' WHERE key='wall_weather_lat'").run();
+        db.prepare("UPDATE settings SET value='' WHERE key='wall_weather_lon'").run();
+      }
       return res.json({ setting: { key, value }, resolved: resolved
         ? { lat: resolved.lat, lon: resolved.lon, name: resolved.name }
         : null });
