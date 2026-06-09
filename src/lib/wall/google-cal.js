@@ -69,7 +69,10 @@ export async function refreshAccessToken(refreshToken) {
 
 export async function fetchCalendarList(accessToken) {
   const r = await fetch(CAL_LIST_URL, { headers: { Authorization: `Bearer ${accessToken}` } });
-  if (!r.ok) throw new Error(`fetchCalendarList ${r.status}`);
+  if (!r.ok) {
+    const t = await r.text().catch(() => '');
+    throw new Error(`fetchCalendarList ${r.status}: ${t.slice(0, 200)}`);
+  }
   const json = await r.json();
   return (json.items || []).map(c => ({
     id:              c.id,
@@ -88,7 +91,10 @@ export async function fetchCalendarEvents(accessToken, calendarId, timeMin, time
   u.searchParams.set('orderBy', 'startTime');
   u.searchParams.set('maxResults', '50');
   const r = await fetch(u, { headers: { Authorization: `Bearer ${accessToken}` } });
-  if (!r.ok) throw new Error(`fetchCalendarEvents ${r.status}`);
+  if (!r.ok) {
+    const t = await r.text().catch(() => '');
+    throw new Error(`fetchCalendarEvents ${r.status}: ${t.slice(0, 200)}`);
+  }
   const json = await r.json();
   return (json.items || [])
     .filter(e => e.status !== 'cancelled')
