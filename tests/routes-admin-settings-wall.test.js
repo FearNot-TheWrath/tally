@@ -135,3 +135,37 @@ test('PATCH wall_weather_location accepts empty and short strings, rejects very 
   assert.equal((await agent.patch('/api/admin/settings/wall_weather_location').send({ value: '78634' })).status, 200);
   assert.equal((await agent.patch('/api/admin/settings/wall_weather_location').send({ value: 'x'.repeat(101) })).status, 400);
 });
+
+test('PATCH wall_weather_location with a zip code geocodes and writes lat/lon', async () => {
+  const db = freshDb(); const app = freshApp(db);
+  const agent = await asParent(app, db);
+  const original = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    assert.match(String(url), /postal_code=78634/);
+    return { ok: true, status: 200, json: async () => ({
+      results: [{ latitude: 30.5083, longitude: -97.5469, name: 'Hutto' }],
+    }) };
+  };
+  try {
+    const r = await agent.patch('/api/admin/settings/wall_weather_location').send({ value: '78634' });
+    assert.equal(r.status, 200);
+    assert.equal(r.body.resolved.lat, 30.5083);
+    assert.equal(r.body.resolved.lon, -97.5469);
+    assert.equal(db.prepare("SELECT value FROM settings WHERE key='wall_weather_lat'").get().value, '30.5083');
+    assert.equal(db.prepare("SELECT value FROM settings WHERE key='wall_weather_lon'").get().value, '-97.5469');
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test('PATCH wall_weather_location with empty string clears lat/lon', async () => {
+  const db = freshDb(); const app = freshApp(db);
+  const agent = await asParent(app, db);
+  db.prepare("UPDATE settings SET value='30.5' WHERE key='wall_weather_lat'").run();
+  db.prepare("UPDATE settings SET value='-97.5' WHERE key='wall_weather_lon'").run();
+  const r = await agent.patch('/api/admin/settings/wall_weather_location').send({ value: '' });
+  assert.equal(r.status, 200);
+  assert.equal(r.body.resolved, null);
+  assert.equal(db.prepare("SELECT value FROM settings WHERE key='wall_weather_lat'").get().value, '');
+  assert.equal(db.prepare("SELECT value FROM settings WHERE key='wall_weather_lon'").get().value, '');
+});

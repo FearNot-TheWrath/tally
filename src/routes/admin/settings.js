@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { requireRole } from '../../auth.js';
+import { geocodeLocation } from '../../lib/wall/geocode.js';
 
 // Whitelist of settings the API can write. Read access returns everything
 // in READABLE_KEYS (no secrets — secrets like admin_pin_hash never appear).
@@ -75,7 +76,7 @@ export function adminSettingsRoutes() {
     res.json({ settings });
   });
 
-  r.patch('/settings/:key', (req, res) => {
+  r.patch('/settings/:key', async (req, res) => {
     const db = req.app.get('db');
     const key = req.params.key;
     if (!EDITABLE_KEYS.has(key)) {
@@ -127,6 +128,25 @@ export function adminSettingsRoutes() {
       INSERT INTO settings (key, value) VALUES (?, ?)
       ON CONFLICT(key) DO UPDATE SET value = excluded.value
     `).run(key, value);
+    // Special handling: when the user PATCHes wall_weather_location, also
+    // resolve it to lat/lon and write the resolved values into the canonical
+    // wall_weather_lat / wall_weather_lon keys.
+    if (key === 'wall_weather_location') {
+      const resolved = await geocodeLocation(value);
+      const lat = resolved ? String(resolved.lat) : '';
+      const lon = resolved ? String(resolved.lon) : '';
+      db.prepare(`
+        INSERT INTO settings (key, value) VALUES ('wall_weather_lat', ?)
+        ON CONFLICT(key) DO UPDATE SET value = excluded.value
+      `).run(lat);
+      db.prepare(`
+        INSERT INTO settings (key, value) VALUES ('wall_weather_lon', ?)
+        ON CONFLICT(key) DO UPDATE SET value = excluded.value
+      `).run(lon);
+      return res.json({ setting: { key, value }, resolved: resolved
+        ? { lat: resolved.lat, lon: resolved.lon, name: resolved.name }
+        : null });
+    }
     res.json({ setting: { key, value } });
   });
 
