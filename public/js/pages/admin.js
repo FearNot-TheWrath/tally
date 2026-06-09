@@ -174,6 +174,7 @@ function editPerson(person, host) {
     ['bonus_rate_cents', 'Bonus per extra point ($)', 'money'],
     ['freeze_start', 'Freeze start (sick day, vacation)', 'date'],
     ['freeze_end', 'Freeze end', 'date'],
+    ['streak_credit', 'Streak credit (extra days added to displayed streak)', 'number'],
   ];
 
   const inputs = fields.map(([key, label, type, opts]) => {

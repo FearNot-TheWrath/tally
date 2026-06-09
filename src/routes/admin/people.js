@@ -6,6 +6,7 @@ const ALLOWED_FIELDS = [
   'name', 'dob', 'role', 'avatar_color',
   'weekly_target_pts', 'base_pay_cents', 'bonus_rate_cents',
   'freeze_start', 'freeze_end',
+  'streak_credit',
 ];
 
 export function adminPeopleRoutes() {

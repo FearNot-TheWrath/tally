@@ -227,3 +227,27 @@ test('currentStreak: today with a forfeit breaks immediately (no in-progress gra
   // Today has a forfeit -> break immediately. Streak = 0.
   assert.equal(currentStreak(db, kid), 0);
 });
+
+test('currentStreak adds streak_credit to the natural count', () => {
+  const db = freshDb();
+  const kid = seedKid(db);
+  const c = seedChore(db);
+  seedAssignment(db, c, kid, today(), 'done');
+  db.prepare('UPDATE people SET streak_credit = ? WHERE id = ?').run(3, kid);
+  assert.equal(currentStreak(db, kid), 4);
+});
+
+test('currentStreak with zero natural and positive credit returns the credit', () => {
+  const db = freshDb();
+  const kid = seedKid(db);
+  db.prepare('UPDATE people SET streak_credit = ? WHERE id = ?').run(7, kid);
+  assert.equal(currentStreak(db, kid), 7);
+});
+
+test('currentStreak defaults streak_credit to 0 when unset (migration default)', () => {
+  const db = freshDb();
+  const kid = seedKid(db);
+  const c = seedChore(db);
+  seedAssignment(db, c, kid, today(), 'done');
+  assert.equal(currentStreak(db, kid), 1);
+});

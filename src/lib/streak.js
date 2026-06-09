@@ -4,7 +4,7 @@ const MAX_WALK = 1000;
 
 export function currentStreak(db, personId) {
   const person = db.prepare(
-    'SELECT freeze_start, freeze_end FROM people WHERE id = ?'
+    'SELECT freeze_start, freeze_end, streak_credit FROM people WHERE id = ?'
   ).get(personId);
   if (!person) return 0;
 
@@ -12,7 +12,7 @@ export function currentStreak(db, personId) {
     'SELECT MIN(due_date) AS d FROM assignments WHERE person_id = ?'
   ).get(personId);
   const firstAssignmentDate = firstRow?.d;
-  if (!firstAssignmentDate) return 0;
+  if (!firstAssignmentDate) return person.streak_credit || 0;
 
   let count = 0;
   let date = today();
@@ -47,7 +47,7 @@ export function currentStreak(db, personId) {
     break;
   }
 
-  return count;
+  return count + (person.streak_credit || 0);
 }
 
 export function isOnFreeze(db, personId, dateIso = today()) {
