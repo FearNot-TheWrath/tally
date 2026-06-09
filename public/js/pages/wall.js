@@ -71,19 +71,47 @@ function setDayNight(isDay) {
 // Formatting helpers
 // ------------------------------------------------------------------
 
+// Wall timezone. Pulled from /api/wall/config; defaults to America/Chicago
+// so a Pi whose OS clock is set to the wrong zone still shows the right time.
+let WALL_TZ = 'America/Chicago';
+
+function tzParts(d) {
+  // Returns { y, M, D, h, m, weekday, hour24 } for the given Date in WALL_TZ.
+  const f = new Intl.DateTimeFormat('en-US', {
+    timeZone: WALL_TZ,
+    year: 'numeric', month: 'numeric', day: 'numeric',
+    weekday: 'short', hour: 'numeric', minute: 'numeric', hour12: false,
+  });
+  const out = {};
+  for (const p of f.formatToParts(d)) {
+    if (p.type === 'year')    out.y = Number(p.value);
+    if (p.type === 'month')   out.M = Number(p.value);
+    if (p.type === 'day')     out.D = Number(p.value);
+    if (p.type === 'weekday') out.weekday = p.value;
+    if (p.type === 'hour')    out.hour24 = Number(p.value) % 24;
+    if (p.type === 'minute')  out.m = Number(p.value);
+  }
+  return out;
+}
+
+const WEEKDAY_FULL = { Sun:'Sunday', Mon:'Monday', Tue:'Tuesday', Wed:'Wednesday', Thu:'Thursday', Fri:'Friday', Sat:'Saturday' };
+
 function fmtTime(d) {
-  const h = d.getHours() % 12 || 12;
-  const m = String(d.getMinutes()).padStart(2, '0');
-  const ampm = d.getHours() < 12 ? 'AM' : 'PM';
+  const p = tzParts(d);
+  const h = p.hour24 % 12 || 12;
+  const m = String(p.m).padStart(2, '0');
+  const ampm = p.hour24 < 12 ? 'AM' : 'PM';
   return `${h}:${m} ${ampm}`;
 }
 
 function fmtDate(d) {
-  return `${DAYS[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}`;
+  const p = tzParts(d);
+  return `${WEEKDAY_FULL[p.weekday] || p.weekday}, ${MONTHS[p.M - 1]} ${p.D}`;
 }
 
 function fmtHHMM(d) {
-  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  const p = tzParts(d);
+  return `${String(p.hour24).padStart(2,'0')}:${String(p.m).padStart(2,'0')}`;
 }
 
 // ------------------------------------------------------------------
@@ -666,6 +694,14 @@ async function loadConfig() {
   cfg.sleep_start       = data.sleep_start       || '00:00';
   cfg.sleep_end         = data.sleep_end         || '00:00';
   cfg.sleep_clock_style = data.sleep_clock_style || 'digital';
+  // Pull the wall timezone so fmtTime / fmtDate / fmtHHMM all render in the
+  // configured zone regardless of the Pi's OS clock setting.
+  if (data.timezone) {
+    try {
+      new Intl.DateTimeFormat('en-US', { timeZone: data.timezone }).format(new Date());
+      WALL_TZ = data.timezone;
+    } catch { /* bad TZ; keep default */ }
+  }
 
   rotation = new Rotation(cfg.enabled_panels, {
     dwellByPanel,

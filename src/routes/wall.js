@@ -88,6 +88,7 @@ export function wallRoutes() {
       sleep_start:       s.wall_sleep_start || '22:00',
       sleep_end:         s.wall_sleep_end || '06:00',
       sleep_clock_style: s.wall_sleep_clock_style || 'analog-minimal',
+      timezone:          s.wall_timezone || 'America/Chicago',
     });
   });
 

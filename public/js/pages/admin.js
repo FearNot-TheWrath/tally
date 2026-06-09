@@ -769,6 +769,24 @@ async function renderWall(host) {
   ]);
   const sleepCard = el('div', { class: 'card' }, [
     el('h4', { style: { marginBottom: 'var(--s3)' } }, ['Sleep']),
+    el('div', { class: 'form-field' }, [
+      el('label', {}, ['Wall timezone (IANA name)']),
+      el('input', {
+        type: 'text',
+        value: s.wall_timezone || 'America/Chicago',
+        placeholder: 'America/Chicago',
+        onChange: async (e) => {
+          try {
+            await api.patch('/api/admin/settings/wall_timezone', { value: e.target.value.trim() });
+            e.target.style.borderColor = 'var(--green)';
+            setTimeout(() => { e.target.style.borderColor = ''; }, 800);
+          } catch (err) { alert('Save failed: ' + err.message); }
+        },
+      }),
+      el('div', { class: 'muted', style: { fontSize: '0.78rem', marginTop: '4px' } }, [
+        'Used for the wall clock, sleep window, and date display. Examples: America/Chicago, America/New_York, America/Los_Angeles.',
+      ]),
+    ]),
     timeField('wall_sleep_start', '22:00', 'Wall sleep start'),
     timeField('wall_sleep_end',   '06:00', 'Wall sleep end'),
     el('div', { class: 'form-field' }, [
