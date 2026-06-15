@@ -17,6 +17,14 @@ function bonusDisplayPoints(b) {
   return b.current_points ?? b.points;
 }
 
+const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const DAYS_SHORT   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+function fmtDueDateShort(iso) {
+  const dt = new Date(iso + 'T00:00:00');
+  if (Number.isNaN(dt.getTime())) return iso;
+  return `${DAYS_SHORT[dt.getDay()]} ${MONTHS_SHORT[dt.getMonth()]} ${dt.getDate()}`;
+}
+
 export async function renderHome(root) {
   clear(root);
   const data = await api.get('/api/home');
@@ -379,6 +387,11 @@ function renderTask(a, root, overdue = false) {
         stolenBadge,
         bonusBadge,
         forfeitedBadge,
+        overdue
+          ? el('div', { style: { fontSize: '0.7rem', color: 'var(--red)', opacity: 0.85 } }, [
+              `was due ${fmtDueDateShort(a.due_date)}`,
+            ])
+          : null,
         a.status === 'excused' && a.note
           ? el('div', { class: 'muted', style: { fontSize: '0.7rem' } }, [a.note])
           : null,
