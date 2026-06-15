@@ -66,49 +66,95 @@ async function renderToday(host) {
       `${d.done} of ${d.total} chores done across the family`
     ]),
   ]));
+  // Format an ISO date (YYYY-MM-DD) as "Mon Jun 7". Used on overdue rows so
+  // the parent knows how stale the assignment is.
+  const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const DAYS_SHORT   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  function fmtDueDate(iso) {
+    const dt = new Date(iso + 'T00:00:00');
+    if (Number.isNaN(dt.getTime())) return iso;
+    return `${DAYS_SHORT[dt.getDay()]} ${MONTHS_SHORT[dt.getMonth()]} ${dt.getDate()}`;
+  }
   host.appendChild(el('div', { class: 'stack', style: { marginTop: 'var(--s4)' } },
     d.kids.map(k => {
+      const selected = new Set();  // assignment ids checked for bulk excuse
+      const bulkBtn = el('button', {
+        class: 'btn btn-ghost btn-sm',
+        disabled: 'disabled',
+        style: { marginLeft: 'auto' },
+        onClick: async (e) => {
+          e.stopPropagation();
+          if (selected.size === 0) return;
+          const reason = prompt(`Excuse ${selected.size} chore${selected.size === 1 ? '' : 's'} — reason:`, '');
+          if (reason === null) return;
+          try {
+            await api.post('/api/admin/assignments/bulk-excuse', { ids: [...selected], note: reason });
+            renderToday(host);
+          } catch (err) { alert(err.message); }
+        },
+      }, ['Excuse selected']);
+      function refreshBulkBtn() {
+        bulkBtn.disabled = selected.size === 0 ? 'disabled' : null;
+        bulkBtn.removeAttribute('disabled');
+        if (selected.size === 0) bulkBtn.setAttribute('disabled', 'disabled');
+        bulkBtn.textContent = selected.size > 0 ? `Excuse selected (${selected.size})` : 'Excuse selected';
+      }
       const detail = el('div', { class: 'stack', style: { display: 'none', marginTop: '8px', gap: '4px' } },
-        (k.assignments || []).map(a => {
-          const right = a.status === 'excused'
-            ? el('span', { class: 'row', style: { gap: '8px', alignItems: 'center' } }, [
-                el('span', { style: { fontSize: '0.72rem', color: '#5B21B6' } }, [`Excused: ${a.note || ''}`]),
-                el('button', { class: 'btn btn-ghost btn-sm', onClick: async (e) => {
-                  e.stopPropagation();
-                  try { await api.post(`/api/admin/assignments/${a.id}/unexcuse`, {}); renderToday(host); }
-                  catch (err) { alert(err.message); }
-                }}, ['Undo']),
-              ])
-            : el('span', { class: 'row', style: { gap: '8px', alignItems: 'center' } }, [
-                el('span', { style: { fontSize: '0.72rem', color: 'var(--muted)' } }, [
-                  a.due_date !== d.today ? 'overdue' : a.status,
-                ]),
-                a.status !== 'done'
-                  ? el('button', { class: 'btn btn-ghost btn-sm', onClick: async (e) => {
-                      e.stopPropagation();
-                      const reason = prompt(`Why is "${a.title}" excused?`, '');
-                      if (reason === null) return;
-                      try { await api.post(`/api/admin/assignments/${a.id}/excuse`, { note: reason }); renderToday(host); }
-                      catch (err) { alert(err.message); }
-                    }}, ['Excuse'])
-                  : null,
-              ].filter(Boolean));
-          return el('div', {
-            style: {
-              fontSize: '0.82rem',
-              padding: '4px 8px',
-              borderRadius: 'var(--r-sm)',
-              background: a.status === 'done' ? 'var(--card-muted)' : 'transparent',
-              color: a.status === 'done' ? 'var(--muted)' : 'var(--ink)',
-              textDecoration: a.status === 'done' ? 'line-through' : 'none',
-              opacity: a.status === 'excused' ? 0.7 : 1,
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            },
-          }, [
-            el('span', {}, [a.title]),
-            right,
-          ]);
-        })
+        [
+          el('div', { class: 'row', style: { justifyContent: 'flex-end', marginBottom: '4px' } }, [bulkBtn]),
+          ...(k.assignments || []).map(a => {
+            const isExcusable = a.status !== 'excused' && a.status !== 'done';
+            const checkbox = isExcusable
+              ? el('input', {
+                  type: 'checkbox',
+                  style: { marginRight: '8px' },
+                  onClick: (e) => e.stopPropagation(),
+                  onChange: (e) => {
+                    if (e.target.checked) selected.add(a.id); else selected.delete(a.id);
+                    refreshBulkBtn();
+                  },
+                })
+              : el('span', { style: { display: 'inline-block', width: '21px' } }, []);
+            const right = a.status === 'excused'
+              ? el('span', { class: 'row', style: { gap: '8px', alignItems: 'center' } }, [
+                  el('span', { style: { fontSize: '0.72rem', color: '#5B21B6' } }, [`Excused: ${a.note || ''}`]),
+                  el('button', { class: 'btn btn-ghost btn-sm', onClick: async (e) => {
+                    e.stopPropagation();
+                    try { await api.post(`/api/admin/assignments/${a.id}/unexcuse`, {}); renderToday(host); }
+                    catch (err) { alert(err.message); }
+                  }}, ['Undo']),
+                ])
+              : el('span', { class: 'row', style: { gap: '8px', alignItems: 'center' } }, [
+                  el('span', { style: { fontSize: '0.72rem', color: a.due_date !== d.today ? 'var(--red)' : 'var(--muted)' } }, [
+                    a.due_date !== d.today ? `overdue · was due ${fmtDueDate(a.due_date)}` : a.status,
+                  ]),
+                  a.status !== 'done'
+                    ? el('button', { class: 'btn btn-ghost btn-sm', onClick: async (e) => {
+                        e.stopPropagation();
+                        const reason = prompt(`Why is "${a.title}" excused?`, '');
+                        if (reason === null) return;
+                        try { await api.post(`/api/admin/assignments/${a.id}/excuse`, { note: reason }); renderToday(host); }
+                        catch (err) { alert(err.message); }
+                      }}, ['Excuse'])
+                    : null,
+                ].filter(Boolean));
+            return el('div', {
+              style: {
+                fontSize: '0.82rem',
+                padding: '4px 8px',
+                borderRadius: 'var(--r-sm)',
+                background: a.status === 'done' ? 'var(--card-muted)' : 'transparent',
+                color: a.status === 'done' ? 'var(--muted)' : 'var(--ink)',
+                textDecoration: a.status === 'done' ? 'line-through' : 'none',
+                opacity: a.status === 'excused' ? 0.7 : 1,
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              },
+            }, [
+              el('span', { class: 'row', style: { alignItems: 'center' } }, [checkbox, el('span', {}, [a.title])]),
+              right,
+            ]);
+          }),
+        ]
       );
       return el('div', { class: 'list-row', style: { cursor: 'pointer', display: 'block' }, onClick: () => {
         detail.style.display = detail.style.display === 'none' ? 'flex' : 'none';
