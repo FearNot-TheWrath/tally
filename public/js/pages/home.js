@@ -229,6 +229,7 @@ function renderTask(a, root, overdue = false) {
   if (a.status === 'submitted') classes.push('submitted');
   if (a.status === 'excused') classes.push('excused');
   if (overdue) classes.push('over');
+  if (a.is_bonus) classes.push('is-bonus');
 
   const ico = a.anti_cheat === 'photo' ? 'cam' : a.anti_cheat === 'approval' ? 'appr' : (a.status === 'done' ? 'done' : '');
   const icoText = a.anti_cheat === 'photo' ? 'P' : a.anti_cheat === 'approval' ? 'A' : (a.status === 'done' ? '✓' : a.title[0]);
